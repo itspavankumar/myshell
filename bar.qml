@@ -7,12 +7,7 @@ import Quickshell.Hyprland
 import "theme"
 import "modules"
 import "popups"
-import "osd"
-import "launcher"
-import "clipboard"
-import "wallpaper"
 import "notifications"
-import "lock"
 
 Scope {
     id: root
@@ -181,6 +176,23 @@ Scope {
     }
 
     // ==========================================
+    // NOTIFICATION SERVICE & TOASTS
+    // ==========================================
+    NotificationService {
+        id: notificationService
+    }
+
+    Variants {
+        model: Quickshell.screens
+
+        NotificationToasts {
+            required property var modelData
+            screen: modelData
+            service: notificationService
+        }
+    }
+
+    // ==========================================
     // BAR VISIBILITY GLOBAL SHORTCUTS & IPC
     // ==========================================
     GlobalShortcut {
@@ -219,106 +231,5 @@ Scope {
         function isVisible(): bool {
             return Theme.barVisible;
         }
-    }
-
-    // ==========================================
-    // GLOBAL OSD CONTROLLER & HOTKEYS
-    // ==========================================
-    OSDService {
-        id: osdService
-    }
-
-    // ==========================================
-    // FLOATING OSD OVERLAY PER SCREEN
-    // ==========================================
-    Variants {
-        model: Quickshell.screens
-
-        OSD {
-            required property var modelData
-            screen: modelData
-            service: osdService
-        }
-    }
-
-    // ==========================================
-    // APP LAUNCHER SERVICE & OVERLAY
-    // ==========================================
-    LauncherService {
-        id: launcherService
-    }
-
-    Variants {
-        model: Quickshell.screens
-
-        Launcher {
-            required property var modelData
-            screen: modelData
-            service: launcherService
-        }
-    }
-
-    // ==========================================
-    // CLIPBOARD HISTORY SERVICE & OVERLAY
-    // ==========================================
-    ClipboardService {
-        id: clipboardService
-    }
-
-    Variants {
-        model: Quickshell.screens
-
-        Clipboard {
-            required property var modelData
-            screen: modelData
-            service: clipboardService
-        }
-    }
-
-    // ==========================================
-    // WALLPAPER SWITCHER SERVICE & OVERLAY
-    // ==========================================
-    WallpaperService {
-        id: wallpaperService
-    }
-
-    Variants {
-        model: Quickshell.screens
-
-        WallpaperSwitcher {
-            required property var modelData
-            screen: modelData
-            service: wallpaperService
-        }
-    }
-
-    // ==========================================
-    // NOTIFICATION SERVICE & TOASTS
-    // ==========================================
-    NotificationService {
-        id: notificationService
-    }
-
-    Variants {
-        model: Quickshell.screens
-
-        NotificationToasts {
-            required property var modelData
-            screen: modelData
-            service: notificationService
-        }
-    }
-
-    // ==========================================
-    // LOCK SCREEN & IDLE / SLEEP SERVICE
-    // ==========================================
-    LockService {
-        id: lockService
-        wallpaperService: wallpaperService
-    }
-
-    LockScreen {
-        service: lockService
-        wallpaperService: wallpaperService
     }
 }

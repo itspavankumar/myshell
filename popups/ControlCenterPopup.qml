@@ -1406,7 +1406,7 @@ PopupWindow {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             Theme.closePopup();
-                            Theme.lock();
+                            root.runCmd(["hyprctl", "dispatch", "global", "quickshell:lock"]);
                         }
                     }
                 }

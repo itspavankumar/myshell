@@ -21,6 +21,7 @@ PanelWindow {
     exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-osd"
+    visible: (root.service && root.service.osdVisible) || card.opacity > 0.001
 
     Rectangle {
         id: card
