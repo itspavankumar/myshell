@@ -12,6 +12,7 @@ import sys
 import os
 import json
 import glob
+import subprocess
 from pathlib import Path
 
 HOME = Path.home()
@@ -146,9 +147,10 @@ def sync_gtk(palette):
   --card-fg-color: {p['textPrimary']};
 }}
 
-/* Specific Nautilus Window styling (never match popup or popover window surfaces!) */
-window.nautilus-window,
-.nautilus-window {{
+/* Window and background styling for Nautilus & all GTK4 apps (never match popups or popovers) */
+window:not(popover):not(.popup),
+window.background:not(popover):not(.popup),
+.background:not(popover):not(.popup) {{
   background-color: {p['bgBase']};
   color: {p['textPrimary']};
 }}
@@ -231,19 +233,24 @@ card {{
     with open(theme_file_4, "w") as f:
         f.write(theme_css)
 
-    # 2. In gtk-4.0: ensure gtk.css and gtk-dark.css cleanly load theme.css
-    base_import_content = "@import url('theme.css');\n"
+    # 2. Write theme_css directly into gtk.css and gtk-dark.css so inotify triggers on them
     for fname in ["gtk.css", "gtk-dark.css"]:
         fpath = gtk4_dir / fname
         if fpath.is_symlink():
             fpath.unlink()
         with open(fpath, "w") as f:
-            f.write(base_import_content)
+            f.write(theme_css)
 
     # 3. Also configure gtk-3.0
     gtk3_theme = gtk3_dir / "gtk.css"
     with open(gtk3_theme, "w") as f:
-        f.write("@import url('../gtk-4.0/theme.css');\n")
+        f.write(theme_css)
+
+    # Trigger GTK style cache flush in all running GTK apps
+    try:
+        subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", "adw-gtk3-dark"], capture_output=True)
+    except Exception:
+        pass
 
     print(f"  ✓ GTK4 / Libadwaita & GTK3 synced: {p['name']}")
 
@@ -298,8 +305,13 @@ palette = 15={palette['textPrimary']}
             with open(config_ghostty, "w") as f:
                 f.write("config-file = ?theme.ghostty\n" + cfg_text)
         else:
-            # Touch config to prompt Ghostty to reload
             config_ghostty.touch()
+
+    # Signal Ghostty to reload configuration live (SIGUSR2)
+    try:
+        subprocess.run(["pkill", "-USR2", "-x", "ghostty"], capture_output=True)
+    except Exception:
+        pass
 
     print(f"  ✓ Ghostty synced: {palette['name']}")
 
