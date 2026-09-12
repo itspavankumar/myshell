@@ -5,7 +5,7 @@
 # ==============================================================================
 
 CONFIG_DIR="/home/pavan/.config/quickshell"
-CONFIGS=("bar" "lock" "launcher" "osd" "clipboard" "wallpaper")
+CONFIGS=("bar" "lock" "launcher" "osd" "clipboard" "wallpaper" "themes")
 
 start_all() {
     echo "Starting modular Quickshell instances..."
@@ -50,6 +50,18 @@ restart_one() {
     echo "Restarted $target."
 }
 
+set_theme() {
+    local theme_name="$1"
+    if [ -z "$theme_name" ]; then
+        echo "Current theme: $(cat "$CONFIG_DIR/theme/active_theme.txt" 2>/dev/null || echo 'tokyo-night')"
+        echo "Usage: start.sh theme <theme-name>"
+        return
+    fi
+    echo "$theme_name" > "$CONFIG_DIR/theme/active_theme.txt"
+    echo "Theme set to '$theme_name'. Restarting Quickshell..."
+    restart_all
+}
+
 status() {
     quickshell list --all 2>/dev/null || echo "No Quickshell instances running."
 }
@@ -65,6 +77,9 @@ case "$1" in
             restart_all
         fi
         ;;
+    theme)
+        set_theme "$2"
+        ;;
     status)
         status
         ;;
@@ -72,3 +87,4 @@ case "$1" in
         start_all
         ;;
 esac
+

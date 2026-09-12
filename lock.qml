@@ -24,3 +24,4 @@ Scope {
         wallpaperService: wallpaperService
     }
 }
+

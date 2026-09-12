@@ -964,6 +964,96 @@ PopupWindow {
                         }
                     }
                 }
+
+                // Theme Selection Tile
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.columnSpan: 2
+                    implicitHeight: 38
+                    clip: true
+                    color: themeTileMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface
+                    border.color: themeTileMouse.containsMouse ? Theme.accent : Theme.borderNormal
+                    border.width: Theme.borderWidth
+                    radius: Theme.squareRadius
+
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.leftMargin: 10
+                        anchors.rightMargin: 10
+                        spacing: 8
+
+                        Text {
+                            text: "󰏘"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 15
+                            renderType: Theme.renderType
+                            color: Theme.accent
+                        }
+
+                        ColumnLayout {
+                            Layout.fillWidth: true
+                            spacing: 0
+
+                            Text {
+                                text: "Theme"
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontCaption
+                                font.weight: Font.DemiBold
+                                color: Theme.textMuted
+                                renderType: Theme.renderType
+                            }
+
+                            Text {
+                                text: Theme.activePalette.name
+                                font.family: Theme.fontFamily
+                                font.pixelSize: Theme.fontSubhead
+                                font.weight: Font.Bold
+                                color: Theme.accent
+                                renderType: Theme.renderType
+                            }
+                        }
+
+                        // Mini swatches preview
+                        Row {
+                            spacing: 3
+                            Layout.alignment: Qt.AlignVCenter
+                            Repeater {
+                                model: Theme.activePalette.swatches
+                                Rectangle {
+                                    required property string modelData
+                                    width: 10
+                                    height: 10
+                                    radius: 2
+                                    color: modelData
+                                    border.color: Theme.borderDim
+                                    border.width: 1
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: "󰅂"
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 12
+                            renderType: Theme.renderType
+                            color: themeTileMouse.containsMouse ? Theme.accent : Theme.textMuted
+                        }
+                    }
+
+                    MouseArea {
+                        id: themeTileMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            Theme.closePopup();
+                            root.runCmd(["hyprctl", "dispatch", "global", "quickshell:theme_toggle"]);
+                        }
+                    }
+                }
             }
 
             // ==========================================

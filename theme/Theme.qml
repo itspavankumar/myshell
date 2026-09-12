@@ -1,7 +1,43 @@
 pragma Singleton
 import QtQuick
+import Quickshell
+import Quickshell.Io
+import "."
 
-QtObject {
+Item {
+    id: root
+
+    // Dynamic Active Theme State (Persisted)
+    property string currentTheme: "tokyo-night"
+    readonly property var activePalette: Palettes.get(currentTheme)
+
+    // Read active theme from disk on startup
+    Process {
+        id: readThemeProc
+        command: ["sh", "-c", "cat /home/pavan/.config/quickshell/theme/active_theme.txt 2>/dev/null || echo 'tokyo-night'"]
+        running: true
+        stdout: SplitParser {
+            onRead: (line) => {
+                let t = line.trim();
+                if (t && Palettes.list.includes(t)) {
+                    root.currentTheme = t;
+                }
+            }
+        }
+    }
+
+    // Process to write active theme and restart all modular instances
+    Process {
+        id: writeThemeProc
+    }
+
+    function setTheme(themeId) {
+        if (!Palettes.list.includes(themeId)) return;
+        currentTheme = themeId;
+        writeThemeProc.command = ["sh", "-c", "echo '" + themeId + "' > /home/pavan/.config/quickshell/theme/active_theme.txt && /home/pavan/.config/quickshell/start.sh restart"];
+        writeThemeProc.running = true;
+    }
+
     // Fonts (Apple San Francisco Optical System)
     readonly property string fontFamily: "SF Pro Text"
     readonly property string fontDisplay: "SF Pro Display"
@@ -19,6 +55,7 @@ QtObject {
     readonly property int fontBody: 12        // List titles, slider labels, app names
     readonly property int fontSubhead: 11     // Subtitles, gamut, descriptions, action buttons
     readonly property int fontCaption: 10     // Badges, pill tags, uppercase section headers
+
     // Core Sizing & Layout (Crisp, Square Geometry)
     readonly property int barHeight: 25
     readonly property int moduleHeight: barHeight - 8 // 17px unified module height
@@ -29,28 +66,29 @@ QtObject {
     readonly property int microRadius: 2  // Subtle 2px bevel option if desired
     readonly property int borderWidth: 1
     
-    // Color Palette (Caelestia / Noctalia / Tokyo Night inspired)
-    readonly property color bgBase: "#0c0e14"
-    readonly property color bgGlass: "#eb0e1017"
-    readonly property color bgSurface: "#161822"
-    readonly property color bgSurfaceHover: "#202331"
-    readonly property color bgSurfaceActive: "#2a2e40"
+    // Color Palette (Dynamic from activePalette)
+    readonly property color bgBase: activePalette.bgBase
+    readonly property color bgGlass: activePalette.bgGlass
+    readonly property color bgSurface: activePalette.bgSurface
+    readonly property color bgSurfaceHover: activePalette.bgSurfaceHover
+    readonly property color bgSurfaceActive: activePalette.bgSurfaceActive
     
     // Borders & Dividers
-    readonly property color borderDim: "#222533"
-    readonly property color borderNormal: "#2e3245"
-    readonly property color borderBright: "#454a65"
-    readonly property color borderAccent: "#7aa2f7"
+    readonly property color borderDim: activePalette.borderDim
+    readonly property color borderNormal: activePalette.borderNormal
+    readonly property color borderBright: activePalette.borderBright
+    readonly property color borderAccent: activePalette.borderAccent
     
     // Accents & Signals
-    readonly property color cyan: "#7dcfff"
-    readonly property color blue: "#7aa2f7"
-    readonly property color purple: "#bb9af7"
-    readonly property color magenta: "#f7768e"
-    readonly property color green: "#9ece6a"
-    readonly property color yellow: "#e0af68"
-    readonly property color orange: "#ff9e64"
-    readonly property color red: "#f7768e"
+    readonly property color accent: activePalette.accent
+    readonly property color cyan: activePalette.cyan
+    readonly property color blue: activePalette.blue
+    readonly property color purple: activePalette.purple
+    readonly property color magenta: activePalette.magenta
+    readonly property color green: activePalette.green
+    readonly property color yellow: activePalette.yellow
+    readonly property color orange: activePalette.orange
+    readonly property color red: activePalette.red
     
     // Typography Spacing & Tracking (Character separation)
     readonly property real trackingTight: 0.3
@@ -59,10 +97,10 @@ QtObject {
     readonly property real trackingWide: 1.4
 
     // Text Hierarchy (Crisp contrast for maximum legibility)
-    readonly property color textPrimary: "#d5deff"
-    readonly property color textSecondary: "#a9b6e5"
-    readonly property color textMuted: "#7982a9"
-    readonly property color textDark: "#15161e"
+    readonly property color textPrimary: activePalette.textPrimary
+    readonly property color textSecondary: activePalette.textSecondary
+    readonly property color textMuted: activePalette.textMuted
+    readonly property color textDark: activePalette.textDark
 
     // Unified Popup Management
     readonly property int popupMarginTop: 8
