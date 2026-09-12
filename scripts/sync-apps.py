@@ -12,6 +12,7 @@ import sys
 import os
 import json
 import glob
+import time
 import subprocess
 from pathlib import Path
 
@@ -78,8 +79,9 @@ def sync_gtk(palette):
   @define-color card_fg_color {p['textPrimary']};
   @define-color card_border_color {p['borderDim']};
 
-  @define-color popover_bg_color {p['bgSurfaceHover']};
+  @define-color popover_bg_color {p['bgSurface']};
   @define-color popover_fg_color {p['textPrimary']};
+  @define-color popover_border_color {p['borderNormal']};
 
   @define-color dialog_bg_color {p['bgBase']};
   @define-color dialog_fg_color {p['textPrimary']};
@@ -87,6 +89,7 @@ def sync_gtk(palette):
   @define-color sidebar_bg_color {p['bgBase']};
   @define-color sidebar_fg_color {p['textPrimary']};
   @define-color sidebar_backdrop_color {p['bgBase']};
+  @define-color sidebar_border_color {p['borderDim']};
 
   @define-color secondary_sidebar_bg_color {p['bgSurface']};
   @define-color secondary_sidebar_fg_color {p['textPrimary']};
@@ -105,12 +108,14 @@ def sync_gtk(palette):
     --headerbar-border-color: {p['borderNormal']};
     --sidebar-bg-color: {p['bgBase']};
     --sidebar-fg-color: {p['textPrimary']};
+    --sidebar-border-color: {p['borderDim']};
     --card-bg-color: {p['bgSurface']};
     --card-fg-color: {p['textPrimary']};
     --dialog-bg-color: {p['bgBase']};
     --dialog-fg-color: {p['textPrimary']};
-    --popover-bg-color: {p['bgSurfaceHover']};
+    --popover-bg-color: {p['bgSurface']};
     --popover-fg-color: {p['textPrimary']};
+    --popover-border-color: {p['borderNormal']};
   }}
 }}
 
@@ -129,6 +134,10 @@ def sync_gtk(palette):
 @define-color card_fg_color {p['textPrimary']};
 @define-color sidebar_bg_color {p['bgBase']};
 @define-color sidebar_fg_color {p['textPrimary']};
+@define-color sidebar_border_color {p['borderDim']};
+@define-color popover_bg_color {p['bgSurface']};
+@define-color popover_fg_color {p['textPrimary']};
+@define-color popover_border_color {p['borderNormal']};
 
 :root {{
   --accent-bg-color: {p['accent']};
@@ -143,11 +152,15 @@ def sync_gtk(palette):
   --headerbar-border-color: {p['borderNormal']};
   --sidebar-bg-color: {p['bgBase']};
   --sidebar-fg-color: {p['textPrimary']};
+  --sidebar-border-color: {p['borderDim']};
   --card-bg-color: {p['bgSurface']};
   --card-fg-color: {p['textPrimary']};
+  --popover-bg-color: {p['bgSurface']};
+  --popover-fg-color: {p['textPrimary']};
+  --popover-border-color: {p['borderNormal']};
 }}
 
-/* Window and background styling for Nautilus & all GTK4 apps (never match popups or popovers) */
+/* Base Window styling (excluding popups / popovers) */
 window:not(popover):not(.popup),
 window.background:not(popover):not(.popup),
 .background:not(popover):not(.popup) {{
@@ -155,33 +168,7 @@ window.background:not(popover):not(.popup),
   color: {p['textPrimary']};
 }}
 
-/* Popover & Context Menu styling: transparent outer surface with styled contents */
-popover,
-popover.background,
-popover:backdrop,
-window.popup,
-window.popover {{
-  background-color: transparent;
-  background-image: none;
-  box-shadow: none;
-}}
-
-popover > contents {{
-  background-color: {p['bgSurfaceHover']};
-  color: {p['textPrimary']};
-  border: 1px solid {p['borderNormal']};
-  border-radius: 10px;
-}}
-
-popover modelbutton:hover,
-popover modelbutton:selected,
-popover row:hover,
-popover row:selected {{
-  background-color: {p['bgSurfaceActive']};
-  color: {p['accent']};
-}}
-
-/* Headerbar global styling: seamless flat headers without cut-through lines */
+/* Headerbar global styling */
 headerbar,
 headerbar.flat {{
   background-color: {p['bgBase']};
@@ -190,45 +177,122 @@ headerbar.flat {{
   box-shadow: none;
 }}
 
-/* 1. Left column: Sidebar and its header share bgBase */
+/* ====================================================================
+   Nautilus & Libadwaita Two-Column Split Architecture
+   ==================================================================== */
+
+/* Left column: Sidebar, its headerbar, and listbox share bgBase */
+overlay-split-view > .sidebar-pane,
+.sidebar-pane,
+.sidebar-pane headerbar,
+.sidebar-pane toolbarview,
+.sidebar-pane listbox,
+.sidebar-pane scrolledwindow,
 .navigation-sidebar,
 placessidebar,
-placesview,
-navigation-sidebar,
-sidebar,
-scrolledwindow.sidebar {{
+placesview {{
   background-color: {p['bgBase']};
   color: {p['textPrimary']};
   border: none;
   box-shadow: none;
 }}
 
-/* 2. Single vertical divider between Sidebar and Content */
-navigation-split-view > separator,
-separator.sidebar,
-.navigation-sidebar {{
+/* Remove default Libadwaita inner shadow from sidebar pane */
+overlay-split-view > .sidebar-pane:dir(ltr),
+overlay-split-view > .sidebar-pane:dir(rtl),
+.sidebar-pane:dir(ltr),
+.sidebar-pane:dir(rtl) {{
+  box-shadow: none;
+}}
+
+/* Single clean 1px vertical divider between Sidebar and Content */
+overlay-split-view > border {{
+  background-color: {p['borderDim']};
+  min-width: 1px;
+  min-height: 1px;
+  border: none;
+  box-shadow: none;
+}}
+
+overlay-split-view > shadow {{
+  background-image: none;
+  background: none;
+  box-shadow: none;
+}}
+
+.sidebar-pane {{
   border-right: 1px solid {p['borderDim']};
 }}
 
-/* 3. Right column: Content view and top pathbar share unified bgSurface */
-navigation-split-view > navigation-page:last-child,
-navigation-split-view > navigation-page:last-child headerbar,
-toolbarview > .top-bar,
-toolbarview > .top-bar headerbar,
-.view,
-listview,
-gridview,
-columnview,
-scrolledwindow.view,
-.nautilus-list-view,
-.nautilus-grid-view {{
+/* Sidebar row styling */
+.sidebar-pane row,
+.sidebar-pane listbox > row,
+.navigation-sidebar listview > row,
+placessidebar row {{
+  background-color: transparent;
+  color: {p['textPrimary']};
+  border-radius: 6px;
+  margin: 1px 4px;
+}}
+
+.sidebar-pane row:hover,
+.sidebar-pane listbox > row:hover,
+.navigation-sidebar listview > row:hover,
+placessidebar row:hover {{
+  background-color: {p['bgSurfaceHover']};
+  color: {p['textPrimary']};
+}}
+
+.sidebar-pane row:selected,
+.sidebar-pane listbox > row:selected,
+.navigation-sidebar listview > row:selected,
+placessidebar row:selected {{
+  background-color: {p['bgSurfaceActive']};
+  color: {p['accent']};
+}}
+
+.sidebar-pane row:selected label,
+.sidebar-pane row:selected image,
+.navigation-sidebar row:selected label {{
+  color: {p['accent']};
+}}
+
+.sidebar-pane separator,
+placessidebar separator {{
+  background-color: {p['borderDim']};
+  min-height: 1px;
+  margin: 6px 12px;
+}}
+
+/* Right column: Content view, top location bar, and folder grid/list share unified bgSurface */
+overlay-split-view > .content-pane,
+.content-pane,
+.content-pane toolbarview,
+.content-pane .top-bar,
+.content-pane headerbar,
+.content-pane toolbarview > .top-bar,
+.content-pane toolbarview > .top-bar headerbar {{
   background-color: {p['bgSurface']};
   color: {p['textPrimary']};
+  border: none;
   border-bottom: none;
   box-shadow: none;
 }}
 
-/* 4. Nautilus Path Bar buttons (e.g. [Trash], [Home]) */
+.content-pane scrolledwindow,
+.content-pane .nautilus-files-view,
+.content-pane .nautilus-list-view,
+.content-pane .nautilus-grid-view,
+.content-pane gridview,
+.content-pane listview,
+.content-pane columnview,
+scrolledwindow.view {{
+  background-color: {p['bgSurface']};
+  color: {p['textPrimary']};
+  border: none;
+}}
+
+/* Nautilus Path Bar buttons (e.g. [Home], [Trash]) */
 .nautilus-path-button,
 .nautilus-pathbar button {{
   background-color: {p['bgSurfaceHover']};
@@ -244,14 +308,22 @@ scrolledwindow.view,
   border-color: {p['borderNormal']};
 }}
 
-listview > row:selected,
-gridview > child:selected,
-columnview > row:selected,
-.view:selected {{
+/* Selected items in folder view */
+.content-pane gridview > child:selected,
+.content-pane listview > row:selected,
+.content-pane columnview row:selected {{
   background-color: {p['bgSurfaceActive']};
   color: {p['accent']};
+  border-radius: 6px;
 }}
 
+.content-pane gridview > child:hover,
+.content-pane listview > row:hover {{
+  background-color: {p['bgSurfaceHover']};
+  border-radius: 6px;
+}}
+
+/* Action buttons */
 button.suggested-action,
 button.accent {{
   background-color: {p['accent']};
@@ -262,6 +334,102 @@ card {{
   background-color: {p['bgSurface']};
   color: {p['textPrimary']};
   border: 1px solid {p['borderDim']};
+}}
+
+/* ====================================================================
+   Popovers, Menus & Context Menus Across All 11 Theme Variants
+   ==================================================================== */
+
+popover,
+popover.background,
+popover:backdrop,
+window.popup,
+window.popover {{
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  border: none;
+}}
+
+popover > contents,
+popover.menu > contents,
+.popover > contents {{
+  background-color: {p['bgSurface']};
+  color: {p['textPrimary']};
+  border: 1px solid {p['borderNormal']};
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}}
+
+popover modelbutton,
+popover.menu modelbutton,
+popover button {{
+  color: {p['textPrimary']};
+  background-color: transparent;
+  border-radius: 6px;
+  min-height: 28px;
+  padding: 2px 10px;
+}}
+
+popover modelbutton label,
+popover.menu modelbutton label {{
+  color: inherit;
+}}
+
+popover modelbutton:hover,
+popover modelbutton:selected,
+popover.menu modelbutton:hover,
+popover.menu modelbutton:selected,
+popover row:hover,
+popover row:selected {{
+  background-color: {p['bgSurfaceHover']};
+  color: {p['accent']};
+}}
+
+popover modelbutton:hover label,
+popover.menu modelbutton:hover label,
+popover modelbutton:selected label,
+popover.menu modelbutton:selected label {{
+  color: {p['accent']};
+}}
+
+popover separator,
+popover.menu separator {{
+  background-color: {p['borderDim']};
+  min-height: 1px;
+  margin: 4px 6px;
+}}
+
+/* GTK3 Classic Menus */
+menu,
+.menu {{
+  background-color: {p['bgSurface']};
+  color: {p['textPrimary']};
+  border: 1px solid {p['borderNormal']};
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}}
+
+menuitem,
+.menu menuitem {{
+  color: {p['textPrimary']};
+  border-radius: 4px;
+  padding: 4px 8px;
+}}
+
+menuitem:hover,
+.menu menuitem:hover {{
+  background-color: {p['bgSurfaceHover']};
+  color: {p['accent']};
+}}
+
+menu separator,
+separator.menuitem {{
+  background-color: {p['borderDim']};
+  min-height: 1px;
+  margin: 4px 6px;
 }}
 """
     theme_file_4 = gtk4_dir / "theme.css"
@@ -288,17 +456,27 @@ card {{
     except Exception:
         pass
 
+    # If Nautilus is currently open, seamlessly restart it with the new theme
+    try:
+        check_nautilus = subprocess.run(["pgrep", "-x", "nautilus"], capture_output=True).returncode == 0
+        if check_nautilus:
+            subprocess.run(["nautilus", "-q"], capture_output=True)
+            subprocess.run(["pkill", "-x", "nautilus"], capture_output=True)
+            time.sleep(0.3)
+            subprocess.Popen(["nautilus", "--no-desktop"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
     print(f"  ✓ GTK4 / Libadwaita & GTK3 synced: {p['name']}")
 
 def sync_ghostty(palette):
     """
     Sync Ghostty terminal emulator.
-    Writes theme.ghostty and links it in config.ghostty.
+    Writes theme.ghostty and links it in config.ghostty and config.
     """
     ghostty_dir = HOME / ".config" / "ghostty"
     ghostty_dir.mkdir(parents=True, exist_ok=True)
     theme_ghostty = ghostty_dir / "theme.ghostty"
-    config_ghostty = ghostty_dir / "config.ghostty"
 
     content = f"""# Ghostty Theme - Palette: {palette['name']}
 # Generated by Quickshell Theme Sync - do not edit directly
@@ -331,21 +509,23 @@ palette = 15={palette['textPrimary']}
     with open(theme_ghostty, "w") as f:
         f.write(content)
 
-    # Ensure config.ghostty includes ?theme.ghostty
-    if not config_ghostty.exists():
-        with open(config_ghostty, "w") as f:
-            f.write("config-file = ?theme.ghostty\n")
-    else:
-        cfg_text = config_ghostty.read_text()
-        if "theme.ghostty" not in cfg_text:
-            with open(config_ghostty, "w") as f:
-                f.write("config-file = ?theme.ghostty\n" + cfg_text)
+    # Ensure config.ghostty and config include ?theme.ghostty
+    for cfg_name in ["config.ghostty", "config"]:
+        cfg_file = ghostty_dir / cfg_name
+        if not cfg_file.exists():
+            with open(cfg_file, "w") as f:
+                f.write("config-file = ?theme.ghostty\n")
         else:
-            config_ghostty.touch()
+            cfg_text = cfg_file.read_text()
+            if "theme.ghostty" not in cfg_text:
+                with open(cfg_file, "w") as f:
+                    f.write("config-file = ?theme.ghostty\n" + cfg_text)
+            else:
+                cfg_file.touch()
 
     # Signal Ghostty to reload configuration live (SIGUSR2)
     try:
-        subprocess.run(["pkill", "-USR2", "-x", "ghostty"], capture_output=True)
+        subprocess.run(["pkill", "-SIGUSR2", "-x", "ghostty"], capture_output=True)
     except Exception:
         pass
 
@@ -411,7 +591,15 @@ def sync_vscodium(palette):
         "dropdown.border": p["borderNormal"],
         "list.activeSelectionBackground": p["bgSurfaceActive"],
         "list.activeSelectionForeground": p["textPrimary"],
-        "list.hoverBackground": p["bgSurfaceHover"]
+        "list.hoverBackground": p["bgSurfaceHover"],
+        # Right-click context menus in VSCodium
+        "menu.background": p["bgSurface"],
+        "menu.foreground": p["textPrimary"],
+        "menu.selectionBackground": p["bgSurfaceHover"],
+        "menu.selectionForeground": p["accent"],
+        "menu.selectionBorder": p["accent"],
+        "menu.border": p["borderNormal"],
+        "menu.separatorBackground": p["borderDim"]
     }
 
     settings["workbench.colorCustomizations"] = customizations
@@ -522,6 +710,40 @@ hbox.browserSidebarContainer,
 #zen-current-workspace-indicator {{
   background-color: {p['accent']} !important;
 }}
+
+/* Context Menus / Popups in Zen / Firefox */
+menupopup,
+panel[type="autocomplete-richlistbox"] {{
+  --panel-background: {p['bgSurface']} !important;
+  --panel-color: {p['textPrimary']} !important;
+  --panel-border-color: {p['borderNormal']} !important;
+  --panel-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  background-color: {p['bgSurface']} !important;
+  color: {p['textPrimary']} !important;
+  border: 1px solid {p['borderNormal']} !important;
+  border-radius: 8px !important;
+  padding: 4px !important;
+}}
+
+menupopup menuitem,
+menupopup menu {{
+  color: {p['textPrimary']} !important;
+  border-radius: 4px !important;
+  padding: 4px 8px !important;
+}}
+
+menupopup menuitem:hover,
+menupopup menu:hover,
+menupopup menuitem[_moz-menuactive="true"],
+menupopup menu[_moz-menuactive="true"] {{
+  background-color: {p['bgSurfaceHover']} !important;
+  color: {p['accent']} !important;
+}}
+
+menupopup menuseparator {{
+  border-top: 1px solid {p['borderDim']} !important;
+  margin: 4px 6px !important;
+}}
 """
         with open(zen_theme_file, "w") as f:
             f.write(theme_css)
@@ -577,4 +799,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
