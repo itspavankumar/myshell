@@ -337,64 +337,33 @@ card {{
 }}
 
 /* ====================================================================
-   Popovers, Menus & Context Menus Across All 11 Theme Variants
+   Popovers, Menus & Context Menus
    ==================================================================== */
 
 popover,
-popover.background,
-popover:backdrop,
-window.popup,
-window.popover {{
+popover.background {{
   background-color: transparent;
-  background-image: none;
   box-shadow: none;
   border: none;
 }}
 
-popover > contents,
-popover.menu > contents,
-.popover > contents {{
+popover > arrow,
+popover > contents {{
   background-color: {p['bgSurface']};
   color: {p['textPrimary']};
   border: 1px solid {p['borderNormal']};
-  border-radius: 10px;
-  padding: 6px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
 }}
 
-popover modelbutton,
-popover.menu modelbutton,
-popover button {{
-  color: {p['textPrimary']};
-  background-color: transparent;
-  border-radius: 6px;
-  min-height: 28px;
-  padding: 2px 10px;
+popover.menu > contents {{
+  padding: 0;
 }}
 
-popover modelbutton label,
-popover.menu modelbutton label {{
-  color: inherit;
-}}
-
-popover modelbutton:hover,
-popover modelbutton:selected,
-popover.menu modelbutton:hover,
-popover.menu modelbutton:selected,
-popover row:hover,
-popover row:selected {{
+popover.menu modelbutton:hover {{
   background-color: {p['bgSurfaceHover']};
   color: {p['accent']};
 }}
 
-popover modelbutton:hover label,
-popover.menu modelbutton:hover label,
-popover modelbutton:selected label,
-popover.menu modelbutton:selected label {{
-  color: {p['accent']};
-}}
-
-popover separator,
 popover.menu separator {{
   background-color: {p['borderDim']};
   min-height: 1px;
@@ -472,7 +441,7 @@ separator.menuitem {{
 def sync_ghostty(palette):
     """
     Sync Ghostty terminal emulator.
-    Writes theme.ghostty and links it in config.ghostty and config.
+    Writes theme.ghostty and links it only in config.ghostty to avoid cycle errors.
     """
     ghostty_dir = HOME / ".config" / "ghostty"
     ghostty_dir.mkdir(parents=True, exist_ok=True)
@@ -509,19 +478,26 @@ palette = 15={palette['textPrimary']}
     with open(theme_ghostty, "w") as f:
         f.write(content)
 
-    # Ensure config.ghostty and config include ?theme.ghostty
-    for cfg_name in ["config.ghostty", "config"]:
-        cfg_file = ghostty_dir / cfg_name
-        if not cfg_file.exists():
-            with open(cfg_file, "w") as f:
-                f.write("config-file = ?theme.ghostty\n")
+    # Remove ~/.config/ghostty/config if present to prevent Ghostty cycle error (config loading config.ghostty)
+    duplicate_cfg = ghostty_dir / "config"
+    if duplicate_cfg.exists() and duplicate_cfg.is_file():
+        try:
+            duplicate_cfg.unlink()
+        except Exception:
+            pass
+
+    # Ensure config.ghostty includes ?theme.ghostty
+    config_ghostty = ghostty_dir / "config.ghostty"
+    if not config_ghostty.exists():
+        with open(config_ghostty, "w") as f:
+            f.write("config-file = ?theme.ghostty\n")
+    else:
+        cfg_text = config_ghostty.read_text()
+        if "theme.ghostty" not in cfg_text:
+            with open(config_ghostty, "w") as f:
+                f.write("config-file = ?theme.ghostty\n" + cfg_text)
         else:
-            cfg_text = cfg_file.read_text()
-            if "theme.ghostty" not in cfg_text:
-                with open(cfg_file, "w") as f:
-                    f.write("config-file = ?theme.ghostty\n" + cfg_text)
-            else:
-                cfg_file.touch()
+            config_ghostty.touch()
 
     # Signal Ghostty to reload configuration live (SIGUSR2)
     try:
