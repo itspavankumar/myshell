@@ -61,7 +61,8 @@ set_theme() {
     for cfg in "${CONFIGS[@]}"; do
         quickshell ipc -p "$CONFIG_DIR/$cfg.qml" call theme setTheme "$theme_name" 2>/dev/null || true
     done
-    echo "Theme successfully set to '$theme_name'. Active components update live."
+    python3 "$CONFIG_DIR/scripts/sync-apps.py" "$theme_name" || true
+    echo "Theme successfully set to '$theme_name'. Shell and applications updated live."
 }
 
 status() {
