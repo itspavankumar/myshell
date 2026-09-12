@@ -58,8 +58,10 @@ set_theme() {
         return
     fi
     echo "$theme_name" > "$CONFIG_DIR/theme/active_theme.txt"
-    echo "Theme set to '$theme_name'. Restarting Quickshell..."
-    restart_all
+    for cfg in "${CONFIGS[@]}"; do
+        quickshell ipc -p "$CONFIG_DIR/$cfg.qml" call theme setTheme "$theme_name" 2>/dev/null || true
+    done
+    echo "Theme successfully set to '$theme_name'. Active components update live."
 }
 
 status() {

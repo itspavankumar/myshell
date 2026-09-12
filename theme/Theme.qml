@@ -26,15 +26,48 @@ Item {
         }
     }
 
-    // Process to write active theme and restart all modular instances
+    // Live file watcher for theme changes across all modular instances
+    FileView {
+        id: themeWatcher
+        path: "/home/pavan/.config/quickshell/theme/active_theme.txt"
+        watchChanges: true
+        onFileChanged: {
+            let t = themeWatcher.text().trim();
+            if (t && Palettes.list.includes(t) && root.currentTheme !== t) {
+                root.currentTheme = t;
+            }
+        }
+        onLoaded: {
+            let t = themeWatcher.text().trim();
+            if (t && Palettes.list.includes(t)) {
+                root.currentTheme = t;
+            }
+        }
+    }
+
+    // Process to persist active theme
     Process {
         id: writeThemeProc
+    }
+
+    IpcHandler {
+        target: "theme"
+
+        function setTheme(name: string): void {
+            if (Palettes.list.includes(name)) {
+                root.currentTheme = name;
+            }
+        }
+
+        function getTheme(): string {
+            return root.currentTheme;
+        }
     }
 
     function setTheme(themeId) {
         if (!Palettes.list.includes(themeId)) return;
         currentTheme = themeId;
-        writeThemeProc.command = ["sh", "-c", "echo '" + themeId + "' > /home/pavan/.config/quickshell/theme/active_theme.txt && /home/pavan/.config/quickshell/start.sh restart"];
+        writeThemeProc.command = ["sh", "-c", "/home/pavan/.config/quickshell/start.sh theme '" + themeId + "'"];
         writeThemeProc.running = true;
     }
 

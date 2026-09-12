@@ -2,6 +2,7 @@
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
 import "theme"
@@ -51,6 +52,26 @@ Scope {
         appid: "quickshell"
         name: "toggle_theme"
         onPressed: root.toggle()
+    }
+
+    IpcHandler {
+        target: "themes"
+
+        function open(): void {
+            root.open();
+        }
+
+        function close(): void {
+            root.close();
+        }
+
+        function toggle(): void {
+            root.toggle();
+        }
+
+        function selectTheme(name: string): void {
+            root.selectTheme(name);
+        }
     }
 
     Variants {
@@ -400,3 +421,4 @@ Scope {
         }
     }
 }
+
