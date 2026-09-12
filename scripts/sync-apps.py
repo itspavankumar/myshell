@@ -181,13 +181,16 @@ popover row:selected {{
   color: {p['accent']};
 }}
 
+/* Headerbar global styling: seamless flat headers without cut-through lines */
 headerbar,
 headerbar.flat {{
   background-color: {p['bgBase']};
   color: {p['textPrimary']};
-  border-bottom: 1px solid {p['borderDim']};
+  border: none;
+  box-shadow: none;
 }}
 
+/* 1. Left column: Sidebar and its header share bgBase */
 .navigation-sidebar,
 placessidebar,
 placesview,
@@ -196,8 +199,22 @@ sidebar,
 scrolledwindow.sidebar {{
   background-color: {p['bgBase']};
   color: {p['textPrimary']};
+  border: none;
+  box-shadow: none;
 }}
 
+/* 2. Single vertical divider between Sidebar and Content */
+navigation-split-view > separator,
+separator.sidebar,
+.navigation-sidebar {{
+  border-right: 1px solid {p['borderDim']};
+}}
+
+/* 3. Right column: Content view and top pathbar share unified bgSurface */
+navigation-split-view > navigation-page:last-child,
+navigation-split-view > navigation-page:last-child headerbar,
+toolbarview > .top-bar,
+toolbarview > .top-bar headerbar,
 .view,
 listview,
 gridview,
@@ -207,6 +224,24 @@ scrolledwindow.view,
 .nautilus-grid-view {{
   background-color: {p['bgSurface']};
   color: {p['textPrimary']};
+  border-bottom: none;
+  box-shadow: none;
+}}
+
+/* 4. Nautilus Path Bar buttons (e.g. [Trash], [Home]) */
+.nautilus-path-button,
+.nautilus-pathbar button {{
+  background-color: {p['bgSurfaceHover']};
+  color: {p['textPrimary']};
+  border: 1px solid {p['borderDim']};
+  border-radius: 6px;
+}}
+
+.nautilus-path-button:hover,
+.nautilus-pathbar button:hover {{
+  background-color: {p['bgSurfaceActive']};
+  color: {p['accent']};
+  border-color: {p['borderNormal']};
 }}
 
 listview > row:selected,
@@ -246,8 +281,9 @@ card {{
     with open(gtk3_theme, "w") as f:
         f.write(theme_css)
 
-    # Trigger GTK style cache flush in all running GTK apps
+    # Trigger GTK style cache flush in all running GTK apps by toggling gtk-theme to force D-Bus broadcast
     try:
+        subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", "Adwaita"], capture_output=True)
         subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "gtk-theme", "adw-gtk3-dark"], capture_output=True)
     except Exception:
         pass
