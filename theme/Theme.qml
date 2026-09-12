@@ -22,9 +22,9 @@ QtObject {
     // Core Sizing & Layout (Crisp, Square Geometry)
     readonly property int barHeight: 25
     readonly property int moduleHeight: barHeight - 8 // 17px unified module height
-    readonly property int barMarginTop: 0
-    readonly property int barMarginLeft: 0
-    readonly property int barMarginRight: 0
+    readonly property int barMarginTop: 3
+    readonly property int barMarginLeft: 3
+    readonly property int barMarginRight: 3
     readonly property int squareRadius: 0 // True square borders as requested
     readonly property int microRadius: 2  // Subtle 2px bevel option if desired
     readonly property int borderWidth: 1
