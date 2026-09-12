@@ -146,14 +146,37 @@ def sync_gtk(palette):
   --card-fg-color: {p['textPrimary']};
 }}
 
-/* Direct element rules for Nautilus and Libadwaita */
-window,
-window.background,
-.background,
-.nautilus-window,
-leaflet {{
+/* Specific Nautilus Window styling (never match popup or popover window surfaces!) */
+window.nautilus-window,
+.nautilus-window {{
   background-color: {p['bgBase']};
   color: {p['textPrimary']};
+}}
+
+/* Popover & Context Menu styling: transparent outer surface with styled contents */
+popover,
+popover.background,
+popover:backdrop,
+window.popup,
+window.popover {{
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}}
+
+popover > contents {{
+  background-color: {p['bgSurfaceHover']};
+  color: {p['textPrimary']};
+  border: 1px solid {p['borderNormal']};
+  border-radius: 10px;
+}}
+
+popover modelbutton:hover,
+popover modelbutton:selected,
+popover row:hover,
+popover row:selected {{
+  background-color: {p['bgSurfaceActive']};
+  color: {p['accent']};
 }}
 
 headerbar,
