@@ -95,16 +95,50 @@ menupopup menu {
 
 /* --- Sidebar & Layout --- */
 
-#navigator-toolbox,
-#zen-tabbox-wrapper,
-.sidebar-panel {
+/* Normal (Docked) Mode */
+:root:not([zen-compact-mode="true"]) #navigator-toolbox,
+:root:not([zen-compact-mode="true"]) .sidebar-panel {
   background-color: var(--base) !important;
 }
 
-#zen-sidebar-splitter {
+:root:not([zen-compact-mode="true"]) #TabsToolbar,
+:root:not([zen-compact-mode="true"]) hbox#titlebar {
+  background-color: var(--base) !important;
+}
+
+:root:not([zen-compact-mode="true"]) #zen-sidebar-splitter {
   background-color: var(--base) !important;
   border: none !important;
   opacity: 1 !important;
+}
+
+/* Compact Mode (Floating Sidebar) - Eliminate outer bounding box and secondary border */
+:root[zen-compact-mode="true"] #navigator-toolbox,
+:root[zen-compact-mode="true"] #navigator-toolbox #titlebar,
+:root[zen-compact-mode="true"] #navigator-toolbox #TabsToolbar,
+:root[zen-compact-mode="true"] #zen-tabbox-wrapper {
+  background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+:root[zen-compact-mode="true"] #zen-sidebar-splitter {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Style the actual floating pill in Compact Mode */
+.zen-toolbar-background {
+  background: var(--base) !important;
+  background-color: var(--base) !important;
+}
+
+.zen-toolbar-background::before,
+.zen-toolbar-background::after {
+  outline: 1px solid var(--outline) !important;
+  outline-offset: -1px !important;
 }
 
 .sidebar-placesTree {
@@ -222,9 +256,6 @@ toolbarbutton#tabs-newtab-button {
   margin-right: 12px !important;
 }
 
-#TabsToolbar, hbox#titlebar {
-  background-color: var(--base) !important;
-}
 
 .zen-current-workspace-indicator-name {
   color: var(--text);
