@@ -9,6 +9,7 @@ Scope {
 
     WallpaperService {
         id: wallpaperService
+        randomOnStartup: true
     }
 
     Variants {

@@ -80,8 +80,6 @@ PopupWindow {
     visible: popupVisible
     implicitWidth: computeDynamicWidth()
     implicitHeight: computeDynamicHeight()
-    width: implicitWidth
-    height: implicitHeight
 
     onWidthChanged: {
         if (visible) anchor.updateAnchor();

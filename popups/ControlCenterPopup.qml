@@ -56,10 +56,6 @@ PopupWindow {
             popupVisible = true;
             anchor.updateAnchor();
             openAnim.restart();
-            getBrightnessProc.running = true;
-            getProfileProc.running = true;
-            getLimitProc.running = true;
-            getMonitorProc.running = true;
         } else {
             if (popupVisible) {
                 openAnim.stop();

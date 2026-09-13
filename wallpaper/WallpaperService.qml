@@ -7,6 +7,7 @@ import "../theme"
 Scope {
     id: root
 
+    property bool randomOnStartup: false
     property bool isOpen: false
     property string currentWallpaper: ""
     property var wallpapers: []
@@ -40,23 +41,26 @@ Scope {
                     break;
                 }
             }
+            if (root.randomOnStartup && root.wallpapers.length > 0) {
+                root.randomOnStartup = false;
+                root.applyRandom();
+            }
         }
     }
 
-    // Process to query active wallpaper from swww/awww
+    // Process to query active wallpaper from awww
     Process {
         id: queryProc
-        command: [
-            "sh", "-c",
-            "export PATH=\"$HOME/.local/bin:/usr/local/bin:/usr/bin:$PATH\"; " +
-            "cmd=$(which swww 2>/dev/null || which awww 2>/dev/null || echo '/usr/bin/awww'); " +
-            "\"$cmd\" query 2>/dev/null | grep -o 'image: .*' | cut -d' ' -f2-"
-        ]
+        command: ["awww", "query"]
         stdout: SplitParser {
             onRead: (line) => {
                 line = line.trim();
-                if (line) {
-                    root.currentWallpaper = line;
+                let idx = line.indexOf("image: ");
+                if (idx !== -1) {
+                    let p = line.substring(idx + 7).trim();
+                    if (p) {
+                        root.currentWallpaper = p;
+                    }
                 }
             }
         }
@@ -115,14 +119,11 @@ Scope {
         let randAngle = Math.floor(Math.random() * 360);
 
         applyProc.command = [
-            "sh", "-c",
-            "export PATH=\"$HOME/.local/bin:/usr/local/bin:/usr/bin:$PATH\"; " +
-            "if ! pgrep -x awww-daemon >/dev/null && ! pgrep -x swww-daemon >/dev/null; then awww-daemon --quiet 2>/dev/null & sleep 0.25; fi; " +
-            "cmd=$(which swww 2>/dev/null || which awww 2>/dev/null || echo '/usr/bin/awww'); " +
-            "\"$cmd\" img " + JSON.stringify(path) +
-            " --transition-type " + randType +
-            " --transition-angle " + randAngle +
-            " --transition-step 90 --transition-fps 60"
+            "awww", "img", path,
+            "--transition-type", randType,
+            "--transition-angle", randAngle.toString(),
+            "--transition-step", "90",
+            "--transition-fps", "60"
         ];
         applyProc.running = true;
 
@@ -141,15 +142,34 @@ Scope {
     Component.onCompleted: {
         ensureDaemonProc.command = [
             "sh", "-c",
-            "export PATH=\"$HOME/.local/bin:/usr/local/bin:/usr/bin:$PATH\"; " +
-            "if ! pgrep -x awww-daemon >/dev/null && ! pgrep -x swww-daemon >/dev/null; then awww-daemon --quiet 2>/dev/null & sleep 0.2; fi"
+            "if ! pgrep -x awww-daemon >/dev/null; then awww-daemon --quiet 2>/dev/null & sleep 0.2; fi"
         ];
         ensureDaemonProc.running = true;
     }
 
     // ==========================================
-    // HYPRLAND GLOBAL SHORTCUTS
+    // IPC HANDLER & HYPRLAND SHORTCUTS
     // ==========================================
+    IpcHandler {
+        target: "wallpaper"
+
+        function random(): void {
+            root.applyRandom();
+        }
+
+        function set(path: string): void {
+            root.applyWallpaper(path, false);
+        }
+
+        function toggle(): void {
+            root.toggle();
+        }
+
+        function get(): string {
+            return root.currentWallpaper;
+        }
+    }
+
     GlobalShortcut {
         appid: "quickshell"
         name: "wallpaper_toggle"
@@ -162,4 +182,3 @@ Scope {
         onPressed: root.toggle()
     }
 }
-

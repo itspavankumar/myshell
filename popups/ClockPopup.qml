@@ -132,7 +132,7 @@ PopupWindow {
 
     SystemClock {
         id: liveClock
-        precision: SystemClock.Seconds
+        precision: root.visible ? SystemClock.Seconds : SystemClock.Hours
     }
 
     // Calendar state tracking

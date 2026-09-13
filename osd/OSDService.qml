@@ -262,7 +262,7 @@ Item {
             "  if [ -n \"$c_path\" ]; then read -r c < \"$c_path\" 2>/dev/null; if [ \"$c\" != \"$last_c\" ]; then last_c=\"$c\"; echo \"CAPS:$c\"; fi; fi; " +
             "  if [ -n \"$k_path\" ]; then read -r k < \"$k_path\" 2>/dev/null; if [ \"$k\" != \"$last_k\" ]; then last_k=\"$k\"; echo \"KBD:$k\"; fi; fi; " +
             "  if [ -n \"$b_path\" ]; then read -r b < \"$b_path\" 2>/dev/null; if [ \"$b\" != \"$last_b\" ]; then last_b=\"$b\"; pct=$(( (b * 100 + bm / 2) / bm )); [ \"$pct\" -lt 1 ] && pct=1; [ \"$pct\" -gt 100 ] && pct=100; echo \"BRI:$pct\"; fi; fi; " +
-            "  sleep 0.02; " +
+            "  sleep 0.1; " +
             "done"
         ]
         stdout: SplitParser {

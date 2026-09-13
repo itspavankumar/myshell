@@ -11,21 +11,6 @@ Item {
     property string currentTheme: "tokyo-night"
     readonly property var activePalette: Palettes.get(currentTheme)
 
-    // Read active theme from disk on startup
-    Process {
-        id: readThemeProc
-        command: ["sh", "-c", "cat /home/pavan/.config/quickshell/theme/active_theme.txt 2>/dev/null || echo 'tokyo-night'"]
-        running: true
-        stdout: SplitParser {
-            onRead: (line) => {
-                let t = line.trim();
-                if (t && Palettes.list.includes(t)) {
-                    root.currentTheme = t;
-                }
-            }
-        }
-    }
-
     // Live file watcher for theme changes across all modular instances
     FileView {
         id: themeWatcher
@@ -67,7 +52,7 @@ Item {
     function setTheme(themeId) {
         if (!Palettes.list.includes(themeId)) return;
         currentTheme = themeId;
-        writeThemeProc.command = ["sh", "-c", "/home/pavan/.config/quickshell/start.sh theme '" + themeId + "'"];
+        writeThemeProc.command = ["/home/pavan/.config/quickshell/start.sh", "theme", themeId];
         writeThemeProc.running = true;
     }
 

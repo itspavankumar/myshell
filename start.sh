@@ -65,6 +65,17 @@ set_theme() {
     echo "Theme successfully set to '$theme_name'. Shell and applications updated live."
 }
 
+set_wallpaper() {
+    local action="$1"
+    if [ "$action" = "random" ] || [ -z "$action" ]; then
+        quickshell ipc -p "$CONFIG_DIR/wallpaper.qml" call wallpaper random 2>/dev/null || true
+        echo "Random wallpaper applied."
+    else
+        quickshell ipc -p "$CONFIG_DIR/wallpaper.qml" call wallpaper set "$action" 2>/dev/null || true
+        echo "Wallpaper set to $action."
+    fi
+}
+
 status() {
     quickshell list --all 2>/dev/null || echo "No Quickshell instances running."
 }
@@ -82,6 +93,9 @@ case "$1" in
         ;;
     theme)
         set_theme "$2"
+        ;;
+    wallpaper)
+        set_wallpaper "$2"
         ;;
     status)
         status
