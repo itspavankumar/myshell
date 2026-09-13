@@ -553,15 +553,4 @@ PanelWindow {
         }
     }
 
-    // --------------------------------------------------------------------------
-    // External Service Connections
-    // --------------------------------------------------------------------------
-    Connections {
-        target: root.service
-
-        function onTriggerOutputCapture(openMarkup) {
-            // Capture full monitor
-            root.saveCrop(0, 0, root.width, root.height, 0, openMarkup);
-        }
-    }
 }

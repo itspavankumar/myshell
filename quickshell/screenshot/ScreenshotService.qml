@@ -16,9 +16,6 @@ Scope {
     // Active client windows enumerated for window mode
     property var currentWindows: []
 
-    // Signal to trigger immediate output (fullscreen) snapshot on overlays
-    signal triggerOutputCapture(bool openMarkup)
-
     // --------------------------------------------------------------------------
     // File Naming and Target Path Generator
     // --------------------------------------------------------------------------
@@ -204,12 +201,45 @@ Scope {
         refreshWindows(true, openMarkup);
     }
 
+    // --------------------------------------------------------------------------
+    // Fullscreen Capture (with clean HUD unmapping and Satty markup)
+    // --------------------------------------------------------------------------
+    Process {
+        id: fullscreenSnapProc
+        property string targetFile: ""
+        property bool openMarkup: true
+        onExited: (exitCode) => {
+            if (exitCode === 0 && targetFile) {
+                root.onCaptureFinished(targetFile, openMarkup);
+            }
+        }
+    }
+
+    Timer {
+        id: fullscreenDelayTimer
+        interval: 100
+        repeat: false
+        property bool pendingMarkup: true
+        onTriggered: {
+            let targetFile = root.generateTargetPath();
+            fullscreenSnapProc.targetFile = targetFile;
+            fullscreenSnapProc.openMarkup = pendingMarkup;
+            fullscreenSnapProc.command = [
+                "bash", "-c",
+                "mkdir -p \"$(dirname \"$1\")\" && grim \"$1\"",
+                "_", targetFile
+            ];
+            fullscreenSnapProc.running = false;
+            fullscreenSnapProc.running = true;
+        }
+    }
+
     function captureOutput(openMarkup) {
         closeHud();
         root.captureMode = "idle";
         root.pendingWindowCapture = false;
-        root.openMarkupOnFinish = (openMarkup !== false);
-        root.triggerOutputCapture(root.openMarkupOnFinish);
+        fullscreenDelayTimer.pendingMarkup = (openMarkup !== false);
+        fullscreenDelayTimer.start();
     }
 
     function captureRegion() {
