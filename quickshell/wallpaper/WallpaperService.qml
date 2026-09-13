@@ -20,7 +20,7 @@ Scope {
         id: scanProc
         command: [
             "sh", "-c",
-            "find /home/pavan/Pictures/Wallpapers -maxdepth 1 -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.gif' \\) | sort"
+            "find \"$HOME/Pictures/Wallpapers\" -maxdepth 1 -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.gif' \\) | sort"
         ]
         stdout: SplitParser {
             onRead: (line) => {

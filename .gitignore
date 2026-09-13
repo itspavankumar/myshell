@@ -1,14 +1,13 @@
-# Byte-compiled / optimized / DLL files
+# Backups
+*.bak
+*.bak.*
+*~
+
+# Python cache
 __pycache__/
 *.py[cod]
-*$py.class
 
-# Temporary / swap files
-*~
-*.swp
-*.swo
-
-# OS / Editor artifacts
+# OS / Editor files
 .DS_Store
-.idea/
 .vscode/
+.idea/

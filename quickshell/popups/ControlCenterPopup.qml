@@ -1046,7 +1046,7 @@ PopupWindow {
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
                             Theme.closePopup();
-                            root.runCmd(["quickshell", "ipc", "-p", "/home/pavan/.config/quickshell/themes.qml", "call", "themes", "toggle"]);
+                            root.runCmd(["quickshell", "ipc", "-p", (Quickshell.env("HOME") || "") + "/.config/quickshell/themes.qml", "call", "themes", "toggle"]);
                         }
                     }
                 }

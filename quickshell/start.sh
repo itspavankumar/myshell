@@ -4,7 +4,7 @@
 # Manages independent Quickshell instances for crash isolation.
 # ==============================================================================
 
-CONFIG_DIR="/home/pavan/.config/quickshell"
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell"
 CONFIGS=("bar" "lock" "launcher" "osd" "clipboard" "wallpaper" "themes")
 
 start_all() {

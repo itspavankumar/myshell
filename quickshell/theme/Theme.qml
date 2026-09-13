@@ -14,7 +14,7 @@ Item {
     // Live file watcher for theme changes across all modular instances
     FileView {
         id: themeWatcher
-        path: "/home/pavan/.config/quickshell/theme/active_theme.txt"
+        path: (Quickshell.env("HOME") || "") + "/.config/quickshell/theme/active_theme.txt"
         watchChanges: true
         onFileChanged: {
             let t = themeWatcher.text().trim();
@@ -52,7 +52,7 @@ Item {
     function setTheme(themeId) {
         if (!Palettes.list.includes(themeId)) return;
         currentTheme = themeId;
-        writeThemeProc.command = ["/home/pavan/.config/quickshell/start.sh", "theme", themeId];
+        writeThemeProc.command = [(Quickshell.env("HOME") || "") + "/.config/quickshell/start.sh", "theme", themeId];
         writeThemeProc.running = true;
     }
 

@@ -1,0 +1,15 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary / swap files
+*~
+*.swp
+*.swo
+
+# OS / Editor artifacts
+.DS_Store
+.idea/
+.vscode/
+
