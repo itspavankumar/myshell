@@ -778,10 +778,20 @@ def sync_zen(palette):
         user_js = prof / "user.js"
         js_prefs = [
             'user_pref("devtools.chrome.enabled", true);',
-            'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);'
+            'user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);',
+            'user_pref("widget.gtk.rounded-bottom-corners.enabled", false);',
+            'user_pref("zen.theme.border-radius", 0);',
+            'user_pref("zen.theme.content-element-separation", 0);',
+        ]
+        managed_pref_keys = [
+            "devtools.chrome.enabled",
+            "toolkit.legacyUserProfileCustomizations.stylesheets",
+            "widget.gtk.rounded-bottom-corners.enabled",
+            "zen.theme.border-radius",
+            "zen.theme.content-element-separation",
         ]
         existing_js = user_js.read_text(encoding="utf-8") if user_js.exists() else ""
-        js_lines = [line for line in existing_js.splitlines() if not any(p in line for p in ["devtools.chrome.enabled", "toolkit.legacyUserProfileCustomizations.stylesheets"])]
+        js_lines = [line for line in existing_js.splitlines() if not any(p in line for p in managed_pref_keys)]
         js_lines.extend(js_prefs)
         with open(user_js, "w", encoding="utf-8") as f:
             f.write("\n".join(js_lines) + "\n")

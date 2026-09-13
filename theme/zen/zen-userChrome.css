@@ -76,6 +76,13 @@
   --sidebar-text-color: var(--text) !important;
   --lwt-sidebar-text-color: var(--text) !important;
   --lwt-sidebar-background-color: var(--base) !important;
+  /* --- Corner Radius & Gap Reset (Flush Square Corners) --- */
+  --zen-border-radius: 0px !important;
+  --zen-native-inner-radius: 0px !important;
+  --zen-webview-border-radius: 0px !important;
+  --user-tab-radius: 0px !important;
+  --mod-browser-radius-default: 0px !important;
+  --zen-element-separation: 0px !important;
 }
 
 #zen-browser-background {
@@ -91,6 +98,49 @@ menupopup {
 menupopup menuitem,
 menupopup menu {
   color: var(--text) !important;
+}
+
+/* --- Window & Viewport Edge Alignment (Eliminate Rounded Corner Overlays) --- */
+#main-window,
+#main-window[windowtype="navigator:browser"],
+#zen-main-app-wrapper,
+#zen-browser-background,
+body,
+dialog::backdrop {
+  border-radius: 0px !important;
+}
+
+:root:not([inDOMFullscreen="true"]) #tabbrowser-tabbox #tabbrowser-tabpanels .browserSidebarContainer,
+:root #tabbrowser-tabbox #tabbrowser-tabpanels .browserSidebarContainer,
+#tabbrowser-tabpanels .browserSidebarContainer,
+.browserSidebarContainer,
+.browserContainer,
+.browserStack,
+#tabbrowser-tabbox,
+#tabbrowser-tabpanels browser[type="content"],
+browser[type="content"] {
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+:root #tabbrowser-tabpanels .browserSidebarContainer .browserStack browser,
+#tabbrowser-tabpanels .browserSidebarContainer .browserStack browser,
+.browserStack browser {
+  border-radius: 0px !important;
+}
+
+/* Eliminate margins/gaps pushing webview away from window edges */
+:root #zen-tabbox-wrapper,
+#zen-tabbox-wrapper {
+  margin: 0 !important;
+  padding: 0 !important;
+  border-radius: 0px !important;
+  box-shadow: none !important;
+}
+
+#tabbrowser-tabpanels:not([zen-split-view="true"]) {
+  padding-left: 0px !important;
+  padding-right: 0px !important;
 }
 
 /* --- Sidebar & Layout --- */
