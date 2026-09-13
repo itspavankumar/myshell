@@ -73,6 +73,14 @@ PanelWindow {
         return c || "Window";
     }
 
+    // Window corner rounding matching Hyprland windowrules.lua (floating = 10px, tiled = 0px)
+    function getWindowRadius(win) {
+        if (!win) return 0;
+        if (win.className === "ONLYOFFICE") return 0;
+        if (win.floating) return 10;
+        return 0;
+    }
+
     // Computed selection rectangle in local screen coordinates
     readonly property var activeSel: {
         if (!root.service || root.service.captureMode === "idle") return null;
@@ -91,7 +99,9 @@ PanelWindow {
                 title: "",
                 className: "",
                 displayName: "",
-                isWindow: false
+                isWindow: false,
+                floating: false,
+                radius: 0
             };
         }
 
@@ -109,7 +119,9 @@ PanelWindow {
                 title: root.hoveredWindow.title || "",
                 className: root.hoveredWindow.className || "",
                 displayName: root.formatWindowName(root.hoveredWindow),
-                isWindow: true
+                isWindow: true,
+                floating: !!root.hoveredWindow.floating,
+                radius: root.getWindowRadius(root.hoveredWindow)
             };
         }
 
@@ -309,12 +321,13 @@ PanelWindow {
         color: (root.activeSel && root.activeSel.isWindow) ? "#15bb9af7" : "#127aa2f7"
         border.color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
         border.width: 2
-        radius: Theme.squareRadius
+        radius: (root.activeSel && root.activeSel.isWindow) ? root.activeSel.radius : 0
 
         Behavior on x { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
         Behavior on y { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
         Behavior on width { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
         Behavior on height { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+        Behavior on radius { NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
         Behavior on color { ColorAnimation { duration: 80 } }
         Behavior on border.color { ColorAnimation { duration: 80 } }
     }
