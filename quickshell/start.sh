@@ -62,6 +62,7 @@ set_theme() {
         quickshell ipc -p "$CONFIG_DIR/$cfg.qml" call theme setTheme "$theme_name" 2>/dev/null || true
     done
     python3 "$CONFIG_DIR/scripts/sync-apps.py" "$theme_name" || true
+    quickshell ipc -p "$CONFIG_DIR/wallpaper.qml" call wallpaper themeChanged "$theme_name" 2>/dev/null || true
     echo "Theme successfully set to '$theme_name'. Shell and applications updated live."
 }
 

@@ -106,6 +106,61 @@ PanelWindow {
         }
 
         // ==========================================
+        // TOP THEME COLLECTION PILL
+        // ==========================================
+        Rectangle {
+            anchors.bottom: carouselView.top
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottomMargin: 20
+            implicitHeight: 32
+            implicitWidth: collectionRow.implicitWidth + 24
+            color: Theme.bgGlass
+            border.color: Theme.borderBright
+            border.width: Theme.borderWidth
+            radius: Theme.squareRadius
+
+            RowLayout {
+                id: collectionRow
+                anchors.centerIn: parent
+                spacing: 8
+
+                Rectangle {
+                    width: 7
+                    height: 7
+                    radius: 3.5
+                    color: Theme.cyan
+                }
+
+                Text {
+                    text: (root.service && root.service.activeFolder ? root.service.activeFolder : Theme.activePalette.name) + " Collection"
+                    renderType: Theme.renderType
+                    font.family: Theme.fontDisplay
+                    font.pixelSize: Theme.fontBody
+                    font.weight: Font.DemiBold
+                    color: Theme.textPrimary
+                }
+
+                Rectangle {
+                    implicitWidth: countText.implicitWidth + 10
+                    implicitHeight: 18
+                    color: Theme.bgSurfaceActive
+                    radius: Theme.squareRadius
+
+                    Text {
+                        id: countText
+                        anchors.centerIn: parent
+                        text: (root.service ? root.service.wallpapers.length : 0).toString()
+                        renderType: Theme.renderType
+                        font.family: Theme.fontMono
+                        font.pixelSize: Theme.fontCaption
+                        font.weight: Font.Bold
+                        color: Theme.cyan
+                    }
+                }
+            }
+        }
+
+        // ==========================================
         // HORIZONTAL PARALLELOGRAM LISTVIEW
         // ==========================================
         ListView {

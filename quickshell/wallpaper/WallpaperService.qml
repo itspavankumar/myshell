@@ -12,21 +12,27 @@ Scope {
     property string currentWallpaper: ""
     property var wallpapers: []
     property int selectedIndex: 0
+    property string activeFolder: ""
+    property bool applyRandomOnScan: false
 
     property var tempWallpapers: []
 
-    // Process to scan wallpapers
+    // Process to scan wallpapers using theme-aware scanner
     Process {
         id: scanProc
         command: [
-            "sh", "-c",
-            "find \"$HOME/Pictures/Wallpapers\" -maxdepth 1 -type f \\( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' -o -iname '*.gif' \\) | sort"
+            (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/scan-wallpapers.sh",
+            Theme.currentTheme
         ]
         stdout: SplitParser {
             onRead: (line) => {
                 if (!line) return;
                 line = line.trim();
                 if (!line) return;
+                if (line.startsWith("FOLDER:")) {
+                    root.activeFolder = line.substring(7);
+                    return;
+                }
                 let parts = line.split("/");
                 let name = parts[parts.length - 1];
                 root.tempWallpapers.push({ path: line, name: name });
@@ -35,14 +41,20 @@ Scope {
         onExited: {
             root.wallpapers = root.tempWallpapers;
             // Update selected index to current active wallpaper if found
+            let foundIndex = -1;
             for (let i = 0; i < root.wallpapers.length; i++) {
                 if (root.wallpapers[i].path === root.currentWallpaper) {
-                    root.selectedIndex = i;
+                    foundIndex = i;
                     break;
                 }
             }
+            root.selectedIndex = (foundIndex !== -1) ? foundIndex : 0;
+
             if (root.randomOnStartup && root.wallpapers.length > 0) {
                 root.randomOnStartup = false;
+                root.applyRandom();
+            } else if (root.applyRandomOnScan && root.wallpapers.length > 0) {
+                root.applyRandomOnScan = false;
                 root.applyRandom();
             }
         }
@@ -71,17 +83,22 @@ Scope {
         id: applyProc
     }
 
-    function refresh() {
+    function refresh(applyRandom) {
+        root.applyRandomOnScan = !!applyRandom;
         root.tempWallpapers = [];
         queryProc.running = false;
         queryProc.running = true;
+        scanProc.command = [
+            (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/scan-wallpapers.sh",
+            Theme.currentTheme
+        ];
         scanProc.running = false;
         scanProc.running = true;
     }
 
     function open() {
         Theme.closePopup();
-        refresh();
+        refresh(false);
         isOpen = true;
     }
 
@@ -106,7 +123,7 @@ Scope {
     Process {
         id: ensureDaemonProc
         onExited: {
-            root.refresh();
+            root.refresh(root.randomOnStartup);
         }
     }
 
@@ -135,8 +152,19 @@ Scope {
     function applyRandom() {
         if (wallpapers.length === 0) return;
         let randIdx = Math.floor(Math.random() * wallpapers.length);
+        if (wallpapers.length > 1 && randIdx === selectedIndex) {
+            randIdx = (randIdx + 1 + Math.floor(Math.random() * (wallpapers.length - 1))) % wallpapers.length;
+        }
         selectedIndex = randIdx;
         applyIndex(randIdx, true);
+    }
+
+    // React to theme changes across the entire shell
+    Connections {
+        target: Theme
+        function onCurrentThemeChanged() {
+            root.refresh(true);
+        }
     }
 
     Component.onCompleted: {
@@ -157,6 +185,10 @@ Scope {
             root.applyRandom();
         }
 
+        function themeChanged(name: string): void {
+            root.refresh(true);
+        }
+
         function set(path: string): void {
             root.applyWallpaper(path, false);
         }
@@ -167,6 +199,10 @@ Scope {
 
         function get(): string {
             return root.currentWallpaper;
+        }
+
+        function getFolder(): string {
+            return root.activeFolder;
         }
     }
 

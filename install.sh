@@ -326,6 +326,7 @@ setup_symlinks() {
     log_info "Ensuring helper scripts are executable..."
     chmod +x "$REPO_DIR/quickshell/start.sh"
     chmod +x "$REPO_DIR/quickshell/scripts/sync-apps.py"
+    chmod +x "$REPO_DIR/quickshell/scripts/scan-wallpapers.sh"
     log_success "Symlinks and permissions ready."
 }
 
