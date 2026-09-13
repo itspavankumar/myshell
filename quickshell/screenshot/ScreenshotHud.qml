@@ -17,7 +17,7 @@ PanelWindow {
     WlrLayershell.keyboardFocus: (root.service && root.service.isHudOpen) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     anchors {
-        top: true
+        bottom: true
         left: true
         right: true
     }
@@ -36,14 +36,14 @@ PanelWindow {
     Item {
         id: hudContainer
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: 24
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 28
         width: hudPill.width
         height: hudPill.height
 
         opacity: (root.service && root.service.isHudOpen) ? 1.0 : 0.0
         transform: Translate {
-            y: (root.service && root.service.isHudOpen) ? 0 : -14
+            y: (root.service && root.service.isHudOpen) ? 0 : 16
             Behavior on y {
                 NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
             }
@@ -142,7 +142,7 @@ PanelWindow {
                             color: Theme.cyan
                         }
                         Text {
-                            text: "Area"
+                            text: "Region"
                             renderType: Theme.renderType
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontCaption
@@ -226,7 +226,7 @@ PanelWindow {
                             color: Theme.green
                         }
                         Text {
-                            text: "Screen"
+                            text: "Fullscreen"
                             renderType: Theme.renderType
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontCaption

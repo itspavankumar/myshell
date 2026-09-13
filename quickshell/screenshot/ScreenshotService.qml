@@ -55,6 +55,14 @@ Scope {
         capture("window", 0);
     }
 
+    function captureDirect() {
+        closeHud();
+        let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/screenshot.sh";
+        captureProc.running = false;
+        captureProc.command = [scriptPath, "direct", "0"];
+        captureProc.running = true;
+    }
+
     function captureOutput() {
         capture("output", 0);
     }
@@ -88,6 +96,10 @@ Scope {
     IpcHandler {
         target: "screenshot"
 
+        function direct(): void {
+            root.captureDirect();
+        }
+
         function capture(mode: string): void {
             root.capture(mode, 0);
         }
@@ -111,6 +123,12 @@ Scope {
         function close(): void {
             root.closeHud();
         }
+    }
+
+    GlobalShortcut {
+        appid: "quickshell"
+        name: "screenshot_direct"
+        onPressed: root.captureDirect()
     }
 
     GlobalShortcut {

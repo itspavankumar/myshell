@@ -640,10 +640,10 @@ PopupWindow {
 
                                             // Image
                                             Image {
-                                                visible: modelData.image && modelData.image.length > 0
-                                                source: modelData.image || ""
+                                                visible: modelData.image && modelData.image.length > 0 && status === Image.Ready
+                                                source: (modelData.image && modelData.image.startsWith("/")) ? ("file://" + modelData.image) : (modelData.image || "")
                                                 Layout.fillWidth: true
-                                                Layout.preferredHeight: 90
+                                                Layout.preferredHeight: (visible && status === Image.Ready) ? 90 : 0
                                                 fillMode: Image.PreserveAspectCrop
                                                 asynchronous: true
                                                 smooth: true

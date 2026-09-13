@@ -11,7 +11,9 @@ annotation-size-factor = 1.0
 save-after-copy = true
 default-hide-toolbars = false
 primary-highlighter = "block"
+disable-notifications = true
 
 [font]
 family = "SF Pro Display"
 style = "Bold"
+

@@ -161,8 +161,8 @@ Hyprland
 | `Super + Return` | Open Ghostty terminal |
 | `Super + Space` | Spotlight Application Launcher |
 | `Super + V` | Wayland Clipboard History |
-| `Super + Shift + S` | Interactive Screenshot HUD (Region, Window, Output, Delay) |
-| `Print` | Capture Fullscreen & Open Satty Markup |
+| `Print` | Instant Fullscreen Screenshot (copied to clipboard & saved) |
+| `Shift + Print` / `Super + Shift + S` | Interactive Screenshot HUD at bottom center (Region, Window, Fullscreen, Delay) |
 | `Super + Print` | Capture Active Window & Open Satty Markup |
 | `Super + Shift + Print` | Select Region & Open Satty Markup |
 | `Super + L` | Lock Screen |

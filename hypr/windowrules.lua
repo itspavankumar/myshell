@@ -55,6 +55,15 @@ hl.window_rule({
     match = { class = "(org.gnome.NautilusPreviewer)" },
     float = true,
 })
+
+-- Satty Screenshot Annotation Tool (Floating & Centered)
+hl.window_rule({
+    name = "satty-floating",
+    match = { class = "^(com\\.gabm\\.satty)$" },
+    float = true,
+    center = true,
+    size = { 1200, 750 },
+})
 -- Remove borders and shadows for ONLYOFFICE to prevent rendering glitches
 hl.window_rule({
     match = { class = "ONLYOFFICE" },

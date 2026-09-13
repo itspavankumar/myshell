@@ -19,6 +19,20 @@ if [ "$DELAY" -gt 0 ]; then
     sleep "$DELAY"
 fi
 
+# Direct instant fullscreen capture (no satty annotation)
+if [ "$MODE" = "direct" ] || [ "$MODE" = "screen-direct" ] || [ "$MODE" = "fullscreen-direct" ]; then
+    if ! command -v grim &>/dev/null; then
+        notify-send -a "Screenshot" -u critical "Screenshot Error" "'grim' is required for capturing screenshots."
+        exit 1
+    fi
+    grim "$TARGET_FILE"
+    if [ -f "$TARGET_FILE" ]; then
+        wl-copy < "$TARGET_FILE" 2>/dev/null || true
+        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Captured full screen to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
+    fi
+    exit 0
+fi
+
 GEOM=""
 
 case "$MODE" in
@@ -54,7 +68,7 @@ case "$MODE" in
         GEOM=""
         ;;
     *)
-        echo "Unknown mode: $MODE (available: region, window, output)"
+        echo "Unknown mode: $MODE (available: direct, region, window, output)"
         exit 1
         ;;
 esac
@@ -69,12 +83,12 @@ fi
 if command -v satty &>/dev/null; then
     # Full Satty markup annotation editor
     if [ -n "$GEOM" ]; then
-        grim -g "$GEOM" - | satty --filename - --output-filename "$TARGET_FILE" --early-exit --save-after-copy --copy-command "wl-copy"
+        grim -g "$GEOM" - | satty --filename - --output-filename "$TARGET_FILE" --early-exit --save-after-copy --copy-command "wl-copy" --disable-notifications
     else
-        grim - | satty --filename - --output-filename "$TARGET_FILE" --early-exit --save-after-copy --copy-command "wl-copy"
+        grim - | satty --filename - --output-filename "$TARGET_FILE" --early-exit --save-after-copy --copy-command "wl-copy" --disable-notifications
     fi
     if [ -f "$TARGET_FILE" ]; then
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "$TARGET_FILE"
+        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Image copied to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
     fi
 elif command -v swappy &>/dev/null; then
     # Swappy markup editor fallback
@@ -85,7 +99,7 @@ elif command -v swappy &>/dev/null; then
     fi
     if [ -f "$TARGET_FILE" ]; then
         wl-copy < "$TARGET_FILE" 2>/dev/null || true
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "$TARGET_FILE"
+        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "Saved to ~/Pictures/Screenshots/$FILENAME"
     fi
 else
     # Direct capture fallback if markup editor is not yet installed
@@ -96,6 +110,7 @@ else
     fi
     if [ -f "$TARGET_FILE" ]; then
         wl-copy < "$TARGET_FILE" 2>/dev/null || true
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "$TARGET_FILE\n\nInstall 'satty' for instant markup: sudo pacman -S satty"
+        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "Saved to ~/Pictures/Screenshots/$FILENAME\n\nInstall 'satty' for instant markup: sudo pacman -S satty"
     fi
 fi
+
