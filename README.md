@@ -55,7 +55,7 @@ chmod +x install.sh
 The script automatically:
 1. Installs all official Arch packages:
    - Compositor, Audio & Wayland (`hyprland`, `quickshell`, `ghostty`, `pipewire`, `polkit-gnome`, portals, etc.).
-   - Full Nautilus file manager suite (`nautilus`, `nautilus-python`, `sushi`, `ffmpegthumbnailer`, `gst-thumbnailers`, `gvfs-mtp`, `gvfs-smb`, `gvfs-afc`, `gnome-autoar`, archives).
+   - Full Nautilus file manager suite (`nautilus`, `nautilus-python`, `sushi`, `ffmpegthumbnailer`, `gst-thumbnailers`, `gvfs-mtp`, `gvfs-smb`, archives).
    - Core GNOME apps styled by the theme synchronizer (`loupe`, `showtime`, `decibels`, `snapshot`, `gnome-calculator`, `gnome-system-monitor`, etc.).
    - Essential utilities (`mpv`, `btop`, `ncdu`, `neovim`, `nwg-look`, `github-cli`, `yt-dlp`, `zsh`).
 2. Auto-detects ASUS laptops and installs `asusctl` + enables `asusd.service`.
@@ -111,8 +111,8 @@ sudo pacman -S --needed \
 sudo pacman -S --needed \
     nautilus nautilus-python sushi \
     ffmpegthumbnailer gst-thumbnailers \
-    gvfs gvfs-mtp gvfs-smb gvfs-afc gvfs-gphoto2 gvfs-dnssd \
-    gnome-autoar zip unzip 7zip
+    gvfs gvfs-mtp gvfs-smb gvfs-gphoto2 gvfs-dnssd \
+    zip unzip 7zip
 ```
 
 ### 4. Desktop Applications & Tools
@@ -120,7 +120,7 @@ sudo pacman -S --needed \
 sudo pacman -S --needed \
     loupe showtime decibels snapshot \
     gnome-calculator gnome-clocks gnome-system-monitor gnome-font-viewer gnome-music \
-    baobab simple-scan mpv btop ncdu neovim nwg-look github-cli yt-dlp zsh
+    mpv btop ncdu neovim nwg-look github-cli yt-dlp zsh
 ```
 
 ### 5. ASUS ROG / TUF Hardware Controls (For ASUS Laptops)

@@ -70,10 +70,8 @@ PACMAN_PACKAGES=(
     gvfs
     gvfs-mtp
     gvfs-smb
-    gvfs-afc
     gvfs-gphoto2
     gvfs-dnssd
-    gnome-autoar
     zip
     unzip
     7zip
@@ -88,8 +86,6 @@ PACMAN_PACKAGES=(
     gnome-system-monitor
     gnome-font-viewer
     gnome-music
-    baobab
-    simple-scan
 
     # Utilities & Tools
     mpv
