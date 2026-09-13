@@ -16,6 +16,9 @@ TARGET_FILE="$SHOT_DIR/$FILENAME"
 LOG_FILE="/tmp/screenshot.log"
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting screenshot.sh MODE=$MODE" >> "$LOG_FILE" 2>/dev/null || true
 
+# Disconnect standard input from QProcess pipe so tools like slurp don't block on read(0)
+exec < /dev/null
+
 # ------------------------------------------------------------------------------
 # Mode: Direct instant fullscreen capture (Print hotkey)
 # ------------------------------------------------------------------------------
@@ -49,7 +52,7 @@ case "$MODE" in
             exit 1
         fi
         # Select region with clean dark-frosted overlay and cyan accent border
-        GEOM=$(slurp -d -b "#0c0e14aa" -c "#7aa2f7ff" -s "#7aa2f722" -w 2 2>>"$LOG_FILE" || true)
+        GEOM=$(slurp -d -b "#0c0e14aa" -c "#7aa2f7ff" -s "#7aa2f722" -w 2 < /dev/null 2>>"$LOG_FILE" || true)
         if [ -z "$GEOM" ]; then
             # User cancelled selection
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] Region selection cancelled" >> "$LOG_FILE" 2>/dev/null || true
