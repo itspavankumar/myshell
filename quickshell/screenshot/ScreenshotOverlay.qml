@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import Qt5Compat.GraphicalEffects
 import Quickshell
 import Quickshell.Wayland
 import "../theme"
@@ -150,11 +151,6 @@ PanelWindow {
         id: sceneContainer
         anchors.fill: parent
 
-        Rectangle {
-            anchors.fill: parent
-            color: "#000000"
-        }
-
         ScreencopyView {
             id: frozenView
             anchors.fill: parent
@@ -171,8 +167,19 @@ PanelWindow {
         visible: false
         property real cropX: 0
         property real cropY: 0
+        property real cropRadius: 0
         width: 100
         height: 100
+
+        layer.enabled: exportClip.cropRadius > 0
+        layer.effect: OpacityMask {
+            maskSource: Rectangle {
+                width: exportClip.width
+                height: exportClip.height
+                radius: exportClip.cropRadius
+                antialiasing: true
+            }
+        }
 
         ShaderEffectSource {
             id: exportSrc
@@ -186,7 +193,7 @@ PanelWindow {
         }
     }
 
-    function saveCrop(cropX, cropY, cropW, cropH, openMarkup) {
+    function saveCrop(cropX, cropY, cropW, cropH, cropRadius, openMarkup) {
         if (cropW < 6 || cropH < 6) {
             if (root.service) root.service.cancelCapture();
             return;
@@ -202,6 +209,7 @@ PanelWindow {
         exportClip.cropY = finalY;
         exportClip.width = finalW;
         exportClip.height = finalH;
+        exportClip.cropRadius = (cropRadius !== undefined && cropRadius > 0) ? cropRadius : 0;
         exportSrc.x = -finalX;
         exportSrc.y = -finalY;
         exportSrc.scheduleUpdate();
@@ -504,15 +512,17 @@ PanelWindow {
 
             // 1. User dragged a custom area (w >= 12 && h >= 12)
             if (w >= 12 && h >= 12) {
-                root.saveCrop(x, y, w, h, root.service.openMarkupOnFinish);
+                root.saveCrop(x, y, w, h, 0, root.service.openMarkupOnFinish);
                 return;
             }
 
             // 2. Single-click on a window in window mode
             if (root.service.captureMode === "window" && root.hoveredWindow) {
-                let lx = root.hoveredWindow.x - root.screen.x;
-                let ly = root.hoveredWindow.y - root.screen.y;
-                root.saveCrop(lx, ly, root.hoveredWindow.w, root.hoveredWindow.h, root.service.openMarkupOnFinish);
+                let win = root.hoveredWindow;
+                let lx = win.x - root.screen.x;
+                let ly = win.y - root.screen.y;
+                let r = root.getWindowRadius(win);
+                root.saveCrop(lx, ly, win.w, win.h, r, root.service.openMarkupOnFinish);
                 return;
             }
 
@@ -551,7 +561,7 @@ PanelWindow {
 
         function onTriggerOutputCapture(openMarkup) {
             // Capture full monitor
-            root.saveCrop(0, 0, root.width, root.height, openMarkup);
+            root.saveCrop(0, 0, root.width, root.height, 0, openMarkup);
         }
     }
 }

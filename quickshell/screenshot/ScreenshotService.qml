@@ -246,7 +246,8 @@ Scope {
             "grim \"$1\" 2>/dev/null || true; " +
             "if [ -s \"$1\" ]; then " +
             "  wl-copy --type image/png < \"$1\" 2>/dev/null || true; " +
-            "  notify-send -a 'Screenshot' -i \"$1\" -h string:image-path:\"$1\" 'Screenshot Saved' 'Captured full screen to clipboard & saved to ~/Pictures/Screenshots/'\"$2\"; " +
+            "  ACTION=$(notify-send -a 'Screenshot' -i \"$1\" -h string:image-path:\"$1\" --action=delete=\"Delete\" --action=open=\"Open\" 'Screenshot Saved' 'Captured full screen to clipboard & saved to ~/Pictures/Screenshots/'\"$2\"); " +
+            "  if [ \"$ACTION\" = \"delete\" ]; then rm -f \"$1\"; elif [ \"$ACTION\" = \"open\" ]; then xdg-open \"$1\" 2>/dev/null || true; fi & " +
             "fi",
             "_", targetFile, fileName
         ];
@@ -272,7 +273,8 @@ Scope {
             "bash", "-c",
             "mkdir -p \"$(dirname \"$1\")\"; " +
             "wl-copy --type image/png < \"$1\" 2>/dev/null || true; " +
-            "notify-send -a 'Screenshot' -i \"$1\" -h string:image-path:\"$1\" 'Screenshot Saved' 'Captured to clipboard & saved to ~/Pictures/Screenshots/'\"$2\"; " +
+            "ACTION=$(notify-send -a 'Screenshot' -i \"$1\" -h string:image-path:\"$1\" --action=delete=\"Delete\" --action=open=\"Open\" 'Screenshot Saved' 'Captured to ~/Pictures/Screenshots/'\"$2\"); " +
+            "if [ \"$ACTION\" = \"delete\" ]; then rm -f \"$1\"; pkill -f \"satty.*$2\" 2>/dev/null || true; elif [ \"$ACTION\" = \"open\" ]; then xdg-open \"$1\" 2>/dev/null || true; fi & " +
             (openMarkup ? "satty -f \"$1\" --output-filename \"$1\" --early-exit --save-after-copy --copy-command 'wl-copy' --disable-notifications 2>/dev/null || true" : ""),
             "_", targetFile, fileName
         ];
