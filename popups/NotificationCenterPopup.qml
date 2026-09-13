@@ -12,18 +12,60 @@ PopupWindow {
     property var barWindow: null
     property var service: null
 
-    function getWidgetCenterX() {
-        if (!targetItem) return 0;
+    readonly property int minWidth: 330
+    readonly property int maxWidth: 430
+    readonly property int minHeight: 180
+    readonly property int maxHeight: 580
+
+    function getWidgetRightX() {
+        if (!targetItem) return barWindow ? barWindow.width : 1920;
         try {
             let p = targetItem.mapToItem(null, 0, 0);
-            return p.x + (targetItem.width / 2);
+            return p.x + targetItem.width;
         } catch (e) {
-            return targetItem.x + (targetItem.width / 2);
+            return targetItem.x + targetItem.width;
         }
     }
 
+    function computeDynamicWidth() {
+        if (!root.service || root.service.unreadCount === 0) {
+            return minWidth;
+        }
+        let notifs = root.service.notifications || [];
+        let hasImage = false;
+        let hasMultiActions = false;
+        let hasSingleAction = false;
+        let hasLongText = false;
+
+        for (let i = 0; i < notifs.length; i++) {
+            let n = notifs[i];
+            if (!n) continue;
+            if (n.image && n.image.length > 0) hasImage = true;
+            let actCount = (n.notif && n.notif.actions) ? n.notif.actions.length : 0;
+            if (actCount > 1) hasMultiActions = true;
+            else if (actCount === 1) hasSingleAction = true;
+            if ((n.summary && n.summary.length > 28) || (n.body && n.body.length > 70)) {
+                hasLongText = true;
+            }
+        }
+
+        let result = 360;
+        if (hasImage || hasMultiActions) result = maxWidth;
+        else if (hasSingleAction || hasLongText) result = 390;
+
+        return Math.min(maxWidth, Math.max(minWidth, result));
+    }
+
+    function computeDynamicHeight() {
+        if (!root.service || root.service.unreadCount === 0) {
+            return minHeight;
+        }
+        let needed = headerBar.implicitHeight + groupsColumn.implicitHeight + 20;
+        return Math.min(maxHeight, Math.max(minHeight, Math.round(needed)));
+    }
+
     anchor.window: barWindow ? barWindow : (targetItem ? targetItem.Window.window : null)
-    anchor.rect.x: Math.round(getWidgetCenterX() - width / 2)
+    anchor.rect.x: Math.round(getWidgetRightX() - width)
     anchor.rect.y: barWindow ? barWindow.height : Theme.barHeight
     anchor.rect.width: width
     anchor.rect.height: 0
@@ -36,8 +78,18 @@ PopupWindow {
     readonly property bool shouldBeOpen: Theme.activePopup === "notifications"
     property bool popupVisible: false
     visible: popupVisible
-    implicitWidth: 380
-    implicitHeight: mainCard.implicitHeight
+    implicitWidth: computeDynamicWidth()
+    implicitHeight: computeDynamicHeight()
+    width: implicitWidth
+    height: implicitHeight
+
+    onWidthChanged: {
+        if (visible) anchor.updateAnchor();
+    }
+
+    onHeightChanged: {
+        if (visible) anchor.updateAnchor();
+    }
 
     onShouldBeOpenChanged: {
         if (shouldBeOpen) {
@@ -135,8 +187,7 @@ PopupWindow {
 
     Rectangle {
         id: mainCard
-        width: 380
-        implicitHeight: Math.min(560, Math.max(160, headerBar.implicitHeight + contentContainer.implicitHeight + 20))
+        anchors.fill: parent
         color: Theme.bgGlass
         border.color: Theme.borderNormal
         border.width: Theme.borderWidth
@@ -146,7 +197,7 @@ PopupWindow {
 
         transform: Scale {
             id: popupScale
-            origin.x: mainCard.width - 20
+            origin.x: mainCard.width - (targetItem ? Math.round(targetItem.width / 2) : 20)
             origin.y: 0
             xScale: 0.94
             yScale: 0.90
@@ -368,6 +419,16 @@ PopupWindow {
                     contentHeight: groupsColumn.implicitHeight
                     boundsBehavior: Flickable.StopAtBounds
                     clip: true
+
+                    WheelHandler {
+                        target: notifFlick
+                        onWheel: (wheel) => {
+                            let delta = -wheel.angleDelta.y;
+                            let newY = notifFlick.contentY + delta;
+                            let maxY = Math.max(0, notifFlick.contentHeight - notifFlick.height);
+                            notifFlick.contentY = Math.max(0, Math.min(maxY, newY));
+                        }
+                    }
 
                     ColumnLayout {
                         id: groupsColumn
