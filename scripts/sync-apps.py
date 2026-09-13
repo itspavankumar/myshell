@@ -279,7 +279,9 @@ overlay-split-view > .content-pane,
   box-shadow: none;
 }}
 
-.content-pane scrolledwindow,
+.content-pane .nautilus-files-view scrolledwindow,
+.content-pane > scrolledwindow,
+.content-pane toolbarview > scrolledwindow,
 .content-pane .nautilus-files-view,
 .content-pane .nautilus-list-view,
 .content-pane .nautilus-grid-view,
@@ -294,27 +296,40 @@ scrolledwindow.view {{
 
 /* Nautilus Path Bar pill container */
 .nautilus-pathbar {{
-  background-color: {p['bgBase']};
-  border-radius: 9px;
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
+  border-radius: 8px;
   border: 1px solid {p['borderDim']};
-  min-height: 34px;
+  min-height: 32px;
+  padding: 0;
+  margin: 0;
 }}
 
-.nautilus-pathbar > menubutton {{
+.nautilus-pathbar scrolledwindow,
+.nautilus-pathbar > scrolledwindow {{
+  background: transparent;
+  background-color: transparent;
+  border: none;
+  box-shadow: none;
+}}
+
+.nautilus-pathbar > menubutton,
+.nautilus-pathbar menubutton {{
   margin: 0;
   padding: 0;
+  background: transparent;
+  border: none;
 }}
 
 /* Nautilus Path Bar buttons (e.g. [Home], [Trash], and the three-dot button) */
 .nautilus-pathbar .nautilus-path-button,
 .nautilus-pathbar menubutton > button {{
-  margin: 3px;
-  padding-top: 0px;
-  padding-bottom: 0px;
+  margin: 2px 1px;
+  padding: 0 6px;
   min-height: 26px;
   min-width: 24px;
   border-radius: 6px;
   background: transparent;
+  background-color: transparent;
   border: none;
   box-shadow: none;
   color: {p['textPrimary']};
@@ -322,14 +337,15 @@ scrolledwindow.view {{
 
 .nautilus-pathbar .nautilus-path-button:hover,
 .nautilus-pathbar menubutton > button:hover {{
-  background-color: {p['bgSurfaceHover']};
+  background-color: color-mix(in srgb, currentColor 10%, transparent);
   color: {p['accent']};
 }}
 
 .nautilus-pathbar .nautilus-path-button:active,
+.nautilus-pathbar .nautilus-path-button.current-dir,
 .nautilus-pathbar menubutton > button:active,
 .nautilus-pathbar menubutton > button:checked {{
-  background-color: {p['bgSurfaceActive']};
+  background-color: color-mix(in srgb, currentColor 15%, transparent);
   color: {p['accent']};
 }}
 
@@ -337,11 +353,12 @@ scrolledwindow.view {{
 entry.location-entry,
 .nautilus-location-entry,
 #location_entry {{
-  min-height: 34px;
-  border-radius: 9px;
-  background-color: {p['bgBase']};
+  min-height: 32px;
+  border-radius: 8px;
+  background-color: color-mix(in srgb, currentColor 8%, transparent);
   color: {p['textPrimary']};
   border: 1px solid {p['borderDim']};
+  padding: 0 8px;
 }}
 
 /* Selected items in folder view */
@@ -379,26 +396,36 @@ card {{
 popover,
 popover.background,
 popover.menu,
+popover:backdrop,
 .solid-csd popover,
 .solid-csd popover.menu,
 window.solid-csd popover,
+window.csd popover,
 window popover {{
   background: transparent;
   background-color: transparent;
+  background-image: none;
   box-shadow: none;
   border: none;
+  border-width: 0;
+  border-style: none;
+  border-color: transparent;
   outline: none;
+  outline-width: 0;
   padding: 0;
+  margin: 0;
 }}
 
 popover > contents,
-.solid-csd popover > contents {{
+.solid-csd popover > contents,
+popover.menu > contents,
+.solid-csd popover.menu > contents {{
   background-color: {p['bgSurface']};
   color: {p['textPrimary']};
   border: 1px solid {p['borderNormal']};
-  border-radius: 12px;
+  border-radius: 10px;
   background-clip: padding-box;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }}
 
 popover > arrow,
@@ -411,21 +438,21 @@ popover > arrow,
 }}
 
 popover.menu > contents {{
-  padding: 0;
-  border-radius: 12px;
+  padding: 4px;
+  border-radius: 10px;
 }}
 
 popover.menu > contents > stack > box,
 popover.menu > contents > scrolledwindow > viewport > stack > box {{
-  padding: 6px;
-  border-radius: 12px;
+  padding: 0;
+  border-radius: 8px;
 }}
 
 popover.menu modelbutton {{
-  min-height: 32px;
+  min-height: 30px;
   min-width: 40px;
-  padding: 0 12px;
-  border-radius: 8px;
+  padding: 0 10px;
+  border-radius: 6px;
 }}
 
 popover.menu modelbutton:hover,
@@ -448,7 +475,7 @@ menu,
   border: 1px solid {p['borderNormal']};
   border-radius: 8px;
   padding: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: none;
 }}
 
 menuitem,
