@@ -25,7 +25,7 @@ PanelWindow {
     color: "transparent"
 
     implicitWidth: 360
-    implicitHeight: toastsCol.implicitHeight
+    implicitHeight: Math.max(10, toastsCol.implicitHeight)
 
     visible: service && service.activeToasts.length > 0
 
@@ -43,7 +43,9 @@ PanelWindow {
                 required property int index
 
                 Layout.fillWidth: true
+                Layout.preferredHeight: implicitHeight
                 implicitHeight: cardContent.implicitHeight + 20
+                height: implicitHeight
                 color: Theme.bgGlass
                 border.color: modelData.urgency === 2 ? Theme.red : Theme.borderNormal
                 border.width: Theme.borderWidth
@@ -94,11 +96,12 @@ PanelWindow {
 
                 ColumnLayout {
                     id: cardContent
-                    anchors.fill: parent
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     anchors.leftMargin: 14
                     anchors.rightMargin: 12
                     anchors.topMargin: 10
-                    anchors.bottomMargin: 10
                     spacing: 6
 
                     // ==========================================
@@ -204,14 +207,13 @@ PanelWindow {
                     // ==========================================
                     Image {
                         id: toastAttachedImg
-                        visible: modelData.image && modelData.image.length > 0 && status === Image.Ready
+                        visible: modelData.image && modelData.image.length > 0
                         source: (modelData.image && modelData.image.startsWith("/")) ? ("file://" + modelData.image) : (modelData.image || "")
                         Layout.fillWidth: true
-                        Layout.preferredHeight: (visible && status === Image.Ready) ? 120 : 0
+                        Layout.preferredHeight: visible ? 130 : 0
                         fillMode: Image.PreserveAspectCrop
-                        asynchronous: true
                         smooth: true
-                        sourceSize: Qt.size(330, 120)
+                        sourceSize: Qt.size(330, 130)
                     }
 
                     // ==========================================

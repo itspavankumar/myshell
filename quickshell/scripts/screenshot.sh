@@ -13,6 +13,9 @@ mkdir -p "$SHOT_DIR"
 FILENAME="Screenshot_$(date +'%Y-%m-%d_%H-%M-%S').png"
 TARGET_FILE="$SHOT_DIR/$FILENAME"
 
+LOG_FILE="/tmp/screenshot.log"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting screenshot.sh MODE=$MODE" >> "$LOG_FILE" 2>/dev/null || true
+
 # ------------------------------------------------------------------------------
 # Mode: Direct instant fullscreen capture (Print hotkey)
 # ------------------------------------------------------------------------------
@@ -22,9 +25,14 @@ if [ "$MODE" = "direct" ] || [ "$MODE" = "screen-direct" ] || [ "$MODE" = "fulls
         exit 1
     fi
     grim "$TARGET_FILE"
-    if [ -f "$TARGET_FILE" ]; then
+    if [ -f "$TARGET_FILE" ] && [ -s "$TARGET_FILE" ]; then
         wl-copy --type image/png < "$TARGET_FILE" 2>/dev/null || true
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Captured full screen to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
+        notify-send -a "Screenshot" \
+                    -i "$TARGET_FILE" \
+                    -h string:image-path:"$TARGET_FILE" \
+                    "Screenshot Saved" \
+                    "Captured full screen to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Direct capture saved to $TARGET_FILE" >> "$LOG_FILE" 2>/dev/null || true
     fi
     exit 0
 fi
@@ -41,9 +49,10 @@ case "$MODE" in
             exit 1
         fi
         # Select region with clean dark-frosted overlay and cyan accent border
-        GEOM=$(slurp -d -b "#0c0e14aa" -c "#7aa2f7ff" -s "#7aa2f722" -w 2 2>/dev/null || true)
+        GEOM=$(slurp -d -b "#0c0e14aa" -c "#7aa2f7ff" -s "#7aa2f722" -w 2 2>>"$LOG_FILE" || true)
         if [ -z "$GEOM" ]; then
             # User cancelled selection
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Region selection cancelled" >> "$LOG_FILE" 2>/dev/null || true
             exit 0
         fi
         ;;
@@ -69,14 +78,15 @@ case "$MODE" in
 
         if [ -n "$boxes" ]; then
             # Interactive click to select from open windows with purple accent border
-            GEOM=$(echo "$boxes" | slurp -d -b "#0c0e14aa" -c "#bb9af7ff" -s "#bb9af722" -w 2 -r 2>/dev/null || true)
+            GEOM=$(echo "$boxes" | slurp -d -b "#0c0e14aa" -c "#bb9af7ff" -s "#bb9af722" -w 2 -r 2>>"$LOG_FILE" || true)
         else
             # Fallback to interactive selection if no window boxes found
-            GEOM=$(slurp -d -b "#0c0e14aa" -c "#bb9af7ff" -s "#bb9af722" -w 2 2>/dev/null || true)
+            GEOM=$(slurp -d -b "#0c0e14aa" -c "#bb9af7ff" -s "#bb9af722" -w 2 2>>"$LOG_FILE" || true)
         fi
 
         if [ -z "$GEOM" ]; then
             # User cancelled window selection
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Window selection cancelled" >> "$LOG_FILE" 2>/dev/null || true
             exit 0
         fi
         ;;
@@ -97,35 +107,48 @@ fi
 
 # 1. Snap image directly to TARGET_FILE
 if [ -n "$GEOM" ]; then
-    grim -g "$GEOM" "$TARGET_FILE"
+    grim -g "$GEOM" "$TARGET_FILE" 2>>"$LOG_FILE"
 else
-    grim "$TARGET_FILE"
+    grim "$TARGET_FILE" 2>>"$LOG_FILE"
 fi
 
 if [ ! -f "$TARGET_FILE" ] || [ ! -s "$TARGET_FILE" ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] Target file empty or missing" >> "$LOG_FILE" 2>/dev/null || true
     exit 0
 fi
 
 # 2. Immediately copy to clipboard and send notification
 wl-copy --type image/png < "$TARGET_FILE" 2>/dev/null || true
-notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Captured to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
+notify-send -a "Screenshot" \
+            -i "$TARGET_FILE" \
+            -h string:image-path:"$TARGET_FILE" \
+            "Screenshot Saved" \
+            "Captured to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
+echo "[$(date '+%Y-%m-%d %H:%M:%S')] Initial capture saved and notified: $TARGET_FILE" >> "$LOG_FILE" 2>/dev/null || true
 
 # 3. Annotation & Markup Flow via satty
 if command -v satty &>/dev/null; then
-    BEFORE_TIME=$(stat -c %Y "$TARGET_FILE" 2>/dev/null || echo 0)
+    BEFORE_HASH=$(md5sum "$TARGET_FILE" 2>/dev/null | cut -d' ' -f1 || echo "")
     # Launch satty with the captured file
     satty -f "$TARGET_FILE" \
           --output-filename "$TARGET_FILE" \
           --early-exit \
           --save-after-copy \
           --copy-command "wl-copy" \
-          --disable-notifications
+          --disable-notifications 2>>"$LOG_FILE" || true
 
     # If user edited and saved inside satty, update clipboard & notify
-    AFTER_TIME=$(stat -c %Y "$TARGET_FILE" 2>/dev/null || echo 0)
-    if [ "$AFTER_TIME" -gt "$BEFORE_TIME" ]; then
-        wl-copy --type image/png < "$TARGET_FILE" 2>/dev/null || true
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Updated" "Annotated image saved & copied to clipboard"
+    if [ -f "$TARGET_FILE" ]; then
+        AFTER_HASH=$(md5sum "$TARGET_FILE" 2>/dev/null | cut -d' ' -f1 || echo "")
+        if [ -n "$BEFORE_HASH" ] && [ "$AFTER_HASH" != "$BEFORE_HASH" ]; then
+            wl-copy --type image/png < "$TARGET_FILE" 2>/dev/null || true
+            notify-send -a "Screenshot" \
+                        -i "$TARGET_FILE" \
+                        -h string:image-path:"$TARGET_FILE" \
+                        "Screenshot Updated" \
+                        "Annotated image saved & copied to clipboard"
+            echo "[$(date '+%Y-%m-%d %H:%M:%S')] Satty modified and notified: $TARGET_FILE" >> "$LOG_FILE" 2>/dev/null || true
+        fi
     fi
 elif command -v swappy &>/dev/null; then
     swappy -f "$TARGET_FILE" -o "$TARGET_FILE"

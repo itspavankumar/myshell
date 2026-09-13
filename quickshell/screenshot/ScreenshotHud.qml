@@ -67,8 +67,10 @@ PanelWindow {
 
         Rectangle {
             id: hudPill
-            implicitHeight: 46
-            implicitWidth: contentRow.implicitWidth + 24
+            width: contentRow.implicitWidth + 24
+            height: 46
+            implicitHeight: height
+            implicitWidth: width
             color: Theme.bgGlass
             border.color: Theme.borderBright
             border.width: Theme.borderWidth

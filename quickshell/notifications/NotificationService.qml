@@ -51,6 +51,17 @@ Item {
         // Ensure notification is tracked in Quickshell
         notif.tracked = true;
 
+        let resolvedImage = "";
+        if (notif.image && notif.image.toString().length > 0) {
+            resolvedImage = notif.image.toString();
+        }
+        if (!resolvedImage && notif.appIcon) {
+            let iconStr = notif.appIcon.toString();
+            if (iconStr.startsWith("/") || iconStr.startsWith("file://")) {
+                resolvedImage = iconStr;
+            }
+        }
+
         let item = {
             id: notif.id,
             notif: notif,
@@ -60,7 +71,7 @@ Item {
             body: notif.body || "",
             urgency: notif.urgency, // 0 = Low, 1 = Normal, 2 = Critical
             desktopEntry: notif.desktopEntry || "",
-            image: notif.image || "",
+            image: resolvedImage,
             timeStr: Qt.formatTime(new Date(), "hh:mm"),
             timestamp: Date.now()
         };
