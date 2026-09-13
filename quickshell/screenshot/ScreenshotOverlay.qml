@@ -11,6 +11,7 @@ PanelWindow {
     property var service: null
 
     color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-screenshot-overlay"
     WlrLayershell.keyboardFocus: (root.service && root.service.captureMode !== "idle")
@@ -22,6 +23,13 @@ PanelWindow {
         bottom: true
         left: true
         right: true
+    }
+
+    margins {
+        top: 0
+        bottom: 0
+        left: 0
+        right: 0
     }
 
     visible: root.service && (root.service.captureMode === "region" || root.service.captureMode === "window")
@@ -129,6 +137,11 @@ PanelWindow {
     Item {
         id: sceneContainer
         anchors.fill: parent
+
+        Rectangle {
+            anchors.fill: parent
+            color: "#000000"
+        }
 
         ScreencopyView {
             id: frozenView
@@ -316,8 +329,10 @@ PanelWindow {
         color: Theme.bgGlass
         border.color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
         border.width: Theme.borderWidth
-        implicitHeight: 32
+        implicitHeight: 30
         implicitWidth: badgeRow.implicitWidth + 24
+        width: implicitWidth
+        height: implicitHeight
 
         // Placement logic: Floats centered above the window; if near top edge, flips below
         x: root.activeSel
@@ -327,12 +342,12 @@ PanelWindow {
             if (!root.activeSel) return 0;
             // Prefer placing above window
             let topPos = root.activeSel.y - height - 8;
-            if (topPos >= 40) {
+            if (topPos >= 36) {
                 return topPos;
             }
-            // If near top bar, place below window (above instructions pill)
+            // If near top edge, place below window (above bottom instructions pill)
             let bottomPos = root.activeSel.y + root.activeSel.h + 8;
-            if (bottomPos + height <= root.height - 80) {
+            if (bottomPos + height <= root.height - 75) {
                 return bottomPos;
             }
             // Fallback inside window near top
@@ -357,8 +372,8 @@ PanelWindow {
                 text: root.activeSel ? root.activeSel.displayName : ""
                 renderType: Theme.renderType
                 font.family: Theme.fontDisplay
-                font.pixelSize: Theme.fontCaption
-                font.weight: Font.Bold
+                font.pixelSize: Theme.fontSubhead
+                font.weight: Font.DemiBold
                 color: Theme.textPrimary
             }
 
@@ -389,6 +404,8 @@ PanelWindow {
         anchors.bottomMargin: 36
         implicitHeight: 36
         implicitWidth: hintRow.implicitWidth + 28
+        width: implicitWidth
+        height: implicitHeight
         radius: Theme.squareRadius
         color: Theme.bgGlass
         border.color: Theme.borderBright
@@ -413,7 +430,7 @@ PanelWindow {
                     : "Drag to select capture area  •  Esc to cancel"
                 renderType: Theme.renderType
                 font.family: Theme.fontFamily
-                font.pixelSize: Theme.fontCaption
+                font.pixelSize: Theme.fontSubhead
                 font.weight: Font.DemiBold
                 color: Theme.textPrimary
             }

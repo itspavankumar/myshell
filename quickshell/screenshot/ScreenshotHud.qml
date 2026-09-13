@@ -10,6 +10,7 @@ PanelWindow {
     property var service: null
 
     color: "transparent"
+    exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "quickshell-screenshot-hud"
     WlrLayershell.keyboardFocus: (root.service && root.service.isHudOpen) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
@@ -20,6 +21,13 @@ PanelWindow {
         bottom: true
         left: true
         right: true
+    }
+
+    margins {
+        top: 0
+        bottom: 0
+        left: 0
+        right: 0
     }
 
     // Instant unmapping on close so slurp/grim capture cleanly without overlay artifacts
