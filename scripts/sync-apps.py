@@ -608,6 +608,87 @@ separator.menuitem {{
 
     print(f"  ✓ GTK4 / Libadwaita & GTK3 synced: {p['name']}")
 
+def sync_icons(palette):
+    """
+    Sync WhiteSur icon theme variants to match the active theme palette colors.
+    Updates GSettings, GTK3/4 settings.ini, and xsettingsd.
+    """
+    p = palette
+    theme_id = p.get("id", "")
+
+    whitesur_map = {
+        "nord": "WhiteSur-nord-dark",
+        "osaka-jade": "WhiteSur-green-dark",
+        "everforest": "WhiteSur-green-dark",
+        "lupine": "WhiteSur-purple-dark",
+        "tokyo-night": "WhiteSur-purple-dark",
+        "catppuccin": "WhiteSur-purple-dark",
+        "solitude": "WhiteSur-dark",
+        "gruvbox": "WhiteSur-yellow-dark",
+        "matte-black": "WhiteSur-orange-dark",
+        "ristretto": "WhiteSur-orange-dark",
+        "vantablack": "WhiteSur-grey-dark",
+    }
+
+    icon_theme = whitesur_map.get(theme_id, "WhiteSur-dark")
+
+    # Verify if icon theme directory exists
+    icon_dirs = [
+        HOME / ".local" / "share" / "icons" / icon_theme,
+        HOME / ".icons" / icon_theme,
+        Path("/usr/share/icons") / icon_theme,
+    ]
+    if not any(d.exists() for d in icon_dirs):
+        icon_theme = "WhiteSur-dark"
+
+    # 1. Update GSettings (notifies all running GTK apps live via D-Bus)
+    try:
+        subprocess.run(["gsettings", "set", "org.gnome.desktop.interface", "icon-theme", icon_theme], capture_output=True)
+    except Exception:
+        pass
+
+    # 2. Update GTK 3.0 & GTK 4.0 settings.ini
+    for config_subdir in ["gtk-3.0", "gtk-4.0"]:
+        settings_file = HOME / ".config" / config_subdir / "settings.ini"
+        if settings_file.exists():
+            try:
+                lines = settings_file.read_text(encoding="utf-8").splitlines()
+                new_lines = []
+                replaced = False
+                for line in lines:
+                    if line.startswith("gtk-icon-theme-name="):
+                        new_lines.append(f"gtk-icon-theme-name={icon_theme}")
+                        replaced = True
+                    else:
+                        new_lines.append(line)
+                if not replaced:
+                    new_lines.append(f"gtk-icon-theme-name={icon_theme}")
+                settings_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+            except Exception:
+                pass
+
+    # 3. Update xsettingsd if present
+    xsettings_file = HOME / ".config" / "xsettingsd" / "xsettingsd.conf"
+    if xsettings_file.exists():
+        try:
+            lines = xsettings_file.read_text(encoding="utf-8").splitlines()
+            new_lines = []
+            replaced = False
+            for line in lines:
+                if line.startswith("Net/IconThemeName"):
+                    new_lines.append(f'Net/IconThemeName "{icon_theme}"')
+                    replaced = True
+                else:
+                    new_lines.append(line)
+            if not replaced:
+                new_lines.append(f'Net/IconThemeName "{icon_theme}"')
+            xsettings_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+            subprocess.run(["pkill", "-HUP", "-x", "xsettingsd"], capture_output=True)
+        except Exception:
+            pass
+
+    print(f"  ✓ Icon theme synced: {icon_theme} ({p['name']})")
+
 def sync_ghostty(palette):
     """
     Sync Ghostty terminal emulator.
@@ -955,6 +1036,7 @@ def main():
     print(f"Syncing application themes to '{palette['name']}' ({theme_id})...")
 
     sync_gtk(palette)
+    sync_icons(palette)
     sync_ghostty(palette)
     sync_vscodium(palette)
     sync_zen(palette)
