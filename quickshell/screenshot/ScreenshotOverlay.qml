@@ -40,22 +40,55 @@ PanelWindow {
     // Window hover tracking state
     property var hoveredWindow: null
 
+    // Format human-friendly window display name
+    function formatWindowName(win) {
+        if (!win) return "";
+        let c = win.className || "";
+        if (c.includes(".")) {
+            let parts = c.split(".");
+            c = parts[parts.length - 1];
+        }
+        let lower = c.toLowerCase();
+        if (lower === "code-oss" || lower === "codium") c = "VSCodium";
+        else if (lower === "zen" || lower === "zen-alpha") c = "Zen Browser";
+        else if (lower === "ghostty") c = "Ghostty";
+        else if (lower === "org.gnome.nautilus" || lower === "nautilus") c = "Files";
+        else if (c.length > 0) {
+            c = c.charAt(0).toUpperCase() + c.slice(1);
+        }
+
+        let t = win.title ? win.title.trim() : "";
+        if (t.length > 0 && t !== win.className && !t.startsWith("org.") && !t.startsWith("com.")) {
+            if (t.length > 30) t = t.substring(0, 27) + "...";
+            return c ? (c + "  —  " + t) : t;
+        }
+        return c || "Window";
+    }
+
     // Computed selection rectangle in local screen coordinates
     readonly property var activeSel: {
         if (!root.service || root.service.captureMode === "idle") return null;
 
-        // 1. User is dragging a custom region (supported in both region and window modes)
+        // 1. User is dragging a custom region
         let dragW = Math.abs(root.dragCurrentX - root.dragStartX);
         let dragH = Math.abs(root.dragCurrentY - root.dragStartY);
-        if (root.isDragging && (dragW >= 10 || dragH >= 10)) {
+        if (root.isDragging && (dragW >= 8 || dragH >= 8)) {
             let x = Math.min(root.dragStartX, root.dragCurrentX);
             let y = Math.min(root.dragStartY, root.dragCurrentY);
-            return { x: x, y: y, w: dragW, h: dragH, title: "", className: "", isWindow: false };
+            return {
+                x: x,
+                y: y,
+                w: dragW,
+                h: dragH,
+                title: "",
+                className: "",
+                displayName: "",
+                isWindow: false
+            };
         }
 
         // 2. User is hovering a window in window mode
-        if (root.service.captureMode === "window") {
-            if (!root.hoveredWindow) return null;
+        if (root.service.captureMode === "window" && root.hoveredWindow) {
             let sx = root.screen.x;
             let sy = root.screen.y;
             let lx = root.hoveredWindow.x - sx;
@@ -67,6 +100,7 @@ PanelWindow {
                 h: root.hoveredWindow.h,
                 title: root.hoveredWindow.title || "",
                 className: root.hoveredWindow.className || "",
+                displayName: root.formatWindowName(root.hoveredWindow),
                 isWindow: true
             };
         }
@@ -174,7 +208,7 @@ PanelWindow {
     // --------------------------------------------------------------------------
     // Dimmed Scrim with Window/Region Cutout
     // --------------------------------------------------------------------------
-    readonly property color scrimColor: "#75000000"
+    readonly property color scrimColor: "#70000000"
 
     // Full screen dim when nothing is selected yet
     Rectangle {
@@ -226,76 +260,6 @@ PanelWindow {
     }
 
     // --------------------------------------------------------------------------
-    // Detectable Window Cards Preview (Window Mode Only)
-    // --------------------------------------------------------------------------
-    Repeater {
-        model: (root.service && root.service.captureMode === "window") ? root.service.currentWindows : []
-        delegate: Item {
-            id: winCard
-            required property var modelData
-
-            property real lx: modelData.x - root.screen.x
-            property real ly: modelData.y - root.screen.y
-            property bool isHovered: root.hoveredWindow === modelData
-
-            x: lx
-            y: ly
-            width: modelData.w
-            height: modelData.h
-            visible: (lx + modelData.w > 0 && lx < root.width && ly + modelData.h > 0 && ly < root.height)
-
-            // Window border preview
-            Rectangle {
-                anchors.fill: parent
-                color: isHovered ? "#22bb9af7" : "transparent"
-                border.color: isHovered ? Theme.purple : "#55bb9af7"
-                border.width: isHovered ? 2 : 1
-                radius: 4
-
-                Behavior on color { ColorAnimation { duration: 80 } }
-                Behavior on border.color { ColorAnimation { duration: 80 } }
-            }
-
-            // Window corner pill tag
-            Rectangle {
-                anchors.top: parent.top
-                anchors.left: parent.left
-                anchors.margins: 6
-                implicitHeight: 22
-                implicitWidth: winTagRow.implicitWidth + 12
-                color: Theme.bgBase
-                opacity: isHovered ? 0.95 : 0.75
-                radius: 3
-                border.color: isHovered ? Theme.purple : Theme.borderDim
-                border.width: 1
-
-                RowLayout {
-                    id: winTagRow
-                    anchors.centerIn: parent
-                    spacing: 5
-
-                    Text {
-                        text: "󰖲"
-                        font.family: Theme.fontIcon
-                        font.pixelSize: 11
-                        color: winCard.isHovered ? Theme.purple : Theme.textMuted
-                        renderType: Theme.renderType
-                    }
-
-                    Text {
-                        text: winCard.modelData.className
-                        font.family: Theme.fontFamily
-                        font.pixelSize: Theme.fontCaption
-                        font.weight: winCard.isHovered ? Font.Bold : Font.DemiBold
-                        color: winCard.isHovered ? Theme.purple : Theme.textSecondary
-                        renderType: Theme.renderType
-                    }
-                }
-            }
-        }
-    }
-
-    // --------------------------------------------------------------------------
     // Crosshair Guide Lines (Region Mode Before Drag)
     // --------------------------------------------------------------------------
     Item {
@@ -307,7 +271,7 @@ PanelWindow {
             y: root.cursorY
             width: parent.width
             height: 1
-            color: "#50ffffff"
+            color: "#40ffffff"
         }
 
         Rectangle {
@@ -315,7 +279,7 @@ PanelWindow {
             y: 0
             width: 1
             height: parent.height
-            color: "#50ffffff"
+            color: "#40ffffff"
         }
     }
 
@@ -329,82 +293,106 @@ PanelWindow {
         y: root.activeSel ? root.activeSel.y : 0
         width: root.activeSel ? root.activeSel.w : 0
         height: root.activeSel ? root.activeSel.h : 0
-        color: (root.activeSel && root.activeSel.isWindow) ? "#20bb9af7" : "#127aa2f7"
+        color: (root.activeSel && root.activeSel.isWindow) ? "#15bb9af7" : "#127aa2f7"
         border.color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
         border.width: 2
-        radius: (root.activeSel && root.activeSel.isWindow) ? 6 : 0
+        radius: Theme.squareRadius
 
+        Behavior on x { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+        Behavior on y { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+        Behavior on width { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
+        Behavior on height { enabled: !root.isDragging; NumberAnimation { duration: 80; easing.type: Easing.OutQuad } }
         Behavior on color { ColorAnimation { duration: 80 } }
         Behavior on border.color { ColorAnimation { duration: 80 } }
     }
 
     // --------------------------------------------------------------------------
-    // Floating Dimensional / Info Badge
+    // Floating Info Badge (Clean, Minimal, Theme-Consistent)
     // --------------------------------------------------------------------------
     Rectangle {
         id: infoBadge
         visible: root.activeSel !== null && root.activeSel.w > 20 && root.activeSel.h > 20
-        radius: 4
-        color: Theme.bgBase
+        radius: Theme.squareRadius
+        color: Theme.bgGlass
         border.color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
-        border.width: 1
-        implicitHeight: badgeRow.implicitHeight + 8
-        implicitWidth: badgeRow.implicitWidth + 14
+        border.width: Theme.borderWidth
+        implicitHeight: 32
+        implicitWidth: badgeRow.implicitWidth + 24
 
-        // Placement logic: Position below selection; if at bottom edge, flip above
+        // Placement logic: Floats centered above the window; if near top edge, flips below
         x: root.activeSel
-            ? Math.max(8, Math.min(root.width - width - 8, root.activeSel.x + (root.activeSel.w - width) / 2))
+            ? Math.max(12, Math.min(root.width - width - 12, root.activeSel.x + (root.activeSel.w - width) / 2))
             : 0
-        y: root.activeSel
-            ? ((root.activeSel.y + root.activeSel.h + height + 10 < root.height)
-                ? (root.activeSel.y + root.activeSel.h + 8)
-                : Math.max(8, root.activeSel.y - height - 8))
-            : 0
+        y: {
+            if (!root.activeSel) return 0;
+            // Prefer placing above window
+            let topPos = root.activeSel.y - height - 8;
+            if (topPos >= 40) {
+                return topPos;
+            }
+            // If near top bar, place below window (above instructions pill)
+            let bottomPos = root.activeSel.y + root.activeSel.h + 8;
+            if (bottomPos + height <= root.height - 80) {
+                return bottomPos;
+            }
+            // Fallback inside window near top
+            return root.activeSel.y + 10;
+        }
 
         RowLayout {
             id: badgeRow
             anchors.centerIn: parent
-            spacing: 6
+            spacing: 8
 
             Text {
                 text: (root.activeSel && root.activeSel.isWindow) ? "󰖲" : "󰩬"
                 renderType: Theme.renderType
                 font.family: Theme.fontIcon
-                font.pixelSize: 12
+                font.pixelSize: 13
                 color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
             }
 
             Text {
-                text: {
-                    if (!root.activeSel) return "";
-                    let dim = Math.round(root.activeSel.w) + " × " + Math.round(root.activeSel.h) + " px";
-                    if (root.activeSel.isWindow && root.activeSel.className) {
-                        return root.activeSel.className + "  (" + dim + ")";
-                    }
-                    return dim;
-                }
+                visible: root.activeSel && root.activeSel.isWindow && root.activeSel.displayName !== ""
+                text: root.activeSel ? root.activeSel.displayName : ""
                 renderType: Theme.renderType
-                font.family: Theme.fontFamily
+                font.family: Theme.fontDisplay
                 font.pixelSize: Theme.fontCaption
-                font.weight: Font.DemiBold
+                font.weight: Font.Bold
                 color: Theme.textPrimary
+            }
+
+            Rectangle {
+                visible: root.activeSel && root.activeSel.isWindow && root.activeSel.displayName !== ""
+                width: 1
+                height: 12
+                color: Theme.borderDim
+            }
+
+            Text {
+                text: root.activeSel ? (Math.round(root.activeSel.w) + " × " + Math.round(root.activeSel.h) + " px") : ""
+                renderType: Theme.renderType
+                font.family: Theme.fontMono
+                font.pixelSize: Theme.fontCaption
+                font.weight: Font.Medium
+                color: Theme.textSecondary
             }
         }
     }
 
     // --------------------------------------------------------------------------
-    // Top Instructions Pill
+    // Bottom Instructions Pill (Consistent with Screenshot HUD)
     // --------------------------------------------------------------------------
     Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
-        anchors.top: parent.top
-        anchors.topMargin: 20
-        implicitHeight: 32
-        implicitWidth: hintRow.implicitWidth + 24
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 36
+        implicitHeight: 36
+        implicitWidth: hintRow.implicitWidth + 28
         radius: Theme.squareRadius
         color: Theme.bgGlass
         border.color: Theme.borderBright
-        border.width: 1
+        border.width: Theme.borderWidth
 
         RowLayout {
             id: hintRow
@@ -415,18 +403,18 @@ PanelWindow {
                 text: (root.service && root.service.captureMode === "window") ? "󰖲" : "󰩬"
                 renderType: Theme.renderType
                 font.family: Theme.fontIcon
-                font.pixelSize: 13
+                font.pixelSize: 14
                 color: (root.service && root.service.captureMode === "window") ? Theme.purple : Theme.cyan
             }
 
             Text {
                 text: (root.service && root.service.captureMode === "window")
-                    ? "Click window or drag custom area • Right-click or Esc to cancel"
-                    : "Drag to select capture region • Right-click or Esc to cancel"
+                    ? "Click window to capture  •  Drag for custom area  •  Esc to cancel"
+                    : "Drag to select capture area  •  Esc to cancel"
                 renderType: Theme.renderType
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.fontCaption
-                font.weight: Font.Medium
+                font.weight: Font.DemiBold
                 color: Theme.textPrimary
             }
         }
@@ -501,6 +489,13 @@ PanelWindow {
             // 3. Clicked empty area in region mode -> cancel
             if (root.service.captureMode === "region") {
                 root.service.cancelCapture();
+                return;
+            }
+
+            // 4. Clicked empty area in window mode -> cancel
+            if (root.service.captureMode === "window" && !root.hoveredWindow) {
+                root.service.cancelCapture();
+                return;
             }
         }
     }
