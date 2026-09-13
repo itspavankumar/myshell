@@ -20,5 +20,16 @@ Scope {
             service: screenshotService
         }
     }
+
+    Variants {
+        model: Quickshell.screens
+
+        ScreenshotOverlay {
+            required property var modelData
+            screen: modelData
+            service: screenshotService
+        }
+    }
 }
+
 
