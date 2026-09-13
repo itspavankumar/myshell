@@ -12,12 +12,6 @@ SHOT_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 mkdir -p "$SHOT_DIR"
 FILENAME="Screenshot_$(date +'%Y-%m-%d_%H-%M-%S').png"
 TARGET_FILE="$SHOT_DIR/$FILENAME"
-TEMP_FILE="/tmp/snip_$$.png"
-
-cleanup() {
-    rm -f "$TEMP_FILE"
-}
-trap cleanup EXIT
 
 # ------------------------------------------------------------------------------
 # Mode: Direct instant fullscreen capture (Print hotkey)
@@ -29,7 +23,7 @@ if [ "$MODE" = "direct" ] || [ "$MODE" = "screen-direct" ] || [ "$MODE" = "fulls
     fi
     grim "$TARGET_FILE"
     if [ -f "$TARGET_FILE" ]; then
-        wl-copy < "$TARGET_FILE" 2>/dev/null || true
+        wl-copy --type image/png < "$TARGET_FILE" 2>/dev/null || true
         notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Captured full screen to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
     fi
     exit 0
@@ -101,41 +95,38 @@ if ! command -v grim &>/dev/null; then
     exit 1
 fi
 
-# 1. Snap image directly to TEMP_FILE first
+# 1. Snap image directly to TARGET_FILE
 if [ -n "$GEOM" ]; then
-    grim -g "$GEOM" "$TEMP_FILE"
+    grim -g "$GEOM" "$TARGET_FILE"
 else
-    grim "$TEMP_FILE"
+    grim "$TARGET_FILE"
 fi
 
-if [ ! -f "$TEMP_FILE" ] || [ ! -s "$TEMP_FILE" ]; then
+if [ ! -f "$TARGET_FILE" ] || [ ! -s "$TARGET_FILE" ]; then
     exit 0
 fi
 
-# 2. Annotation & Markup Flow via satty
+# 2. Immediately copy to clipboard and send notification
+wl-copy --type image/png < "$TARGET_FILE" 2>/dev/null || true
+notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Captured to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
+
+# 3. Annotation & Markup Flow via satty
 if command -v satty &>/dev/null; then
+    BEFORE_TIME=$(stat -c %Y "$TARGET_FILE" 2>/dev/null || echo 0)
     # Launch satty with the captured file
-    satty -f "$TEMP_FILE" \
+    satty -f "$TARGET_FILE" \
           --output-filename "$TARGET_FILE" \
           --early-exit \
           --save-after-copy \
           --copy-command "wl-copy" \
           --disable-notifications
 
-    # Only send notification if user copied or saved to TARGET_FILE
-    if [ -f "$TARGET_FILE" ] && [ -s "$TARGET_FILE" ]; then
-        wl-copy < "$TARGET_FILE" 2>/dev/null || true
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Image copied to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
+    # If user edited and saved inside satty, update clipboard & notify
+    AFTER_TIME=$(stat -c %Y "$TARGET_FILE" 2>/dev/null || echo 0)
+    if [ "$AFTER_TIME" -gt "$BEFORE_TIME" ]; then
+        wl-copy --type image/png < "$TARGET_FILE" 2>/dev/null || true
+        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Updated" "Annotated image saved & copied to clipboard"
     fi
 elif command -v swappy &>/dev/null; then
-    swappy -f "$TEMP_FILE" -o "$TARGET_FILE"
-    if [ -f "$TARGET_FILE" ] && [ -s "$TARGET_FILE" ]; then
-        wl-copy < "$TARGET_FILE" 2>/dev/null || true
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "Saved to ~/Pictures/Screenshots/$FILENAME"
-    fi
-else
-    # Direct fallback if markup editor is not installed
-    cp "$TEMP_FILE" "$TARGET_FILE"
-    wl-copy < "$TARGET_FILE" 2>/dev/null || true
-    notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "Saved to ~/Pictures/Screenshots/$FILENAME\n\nInstall 'satty' for instant markup: sudo pacman -S satty"
+    swappy -f "$TARGET_FILE" -o "$TARGET_FILE"
 fi
