@@ -44,15 +44,16 @@ PanelWindow {
     readonly property var activeSel: {
         if (!root.service || root.service.captureMode === "idle") return null;
 
-        if (root.service.captureMode === "region") {
-            if (!root.isDragging) return null;
+        // 1. User is dragging a custom region (supported in both region and window modes)
+        let dragW = Math.abs(root.dragCurrentX - root.dragStartX);
+        let dragH = Math.abs(root.dragCurrentY - root.dragStartY);
+        if (root.isDragging && (dragW >= 10 || dragH >= 10)) {
             let x = Math.min(root.dragStartX, root.dragCurrentX);
             let y = Math.min(root.dragStartY, root.dragCurrentY);
-            let w = Math.abs(root.dragCurrentX - root.dragStartX);
-            let h = Math.abs(root.dragCurrentY - root.dragStartY);
-            return { x: x, y: y, w: w, h: h, title: "", className: "" };
+            return { x: x, y: y, w: dragW, h: dragH, title: "", className: "", isWindow: false };
         }
 
+        // 2. User is hovering a window in window mode
         if (root.service.captureMode === "window") {
             if (!root.hoveredWindow) return null;
             let sx = root.screen.x;
@@ -65,7 +66,8 @@ PanelWindow {
                 w: root.hoveredWindow.w,
                 h: root.hoveredWindow.h,
                 title: root.hoveredWindow.title || "",
-                className: root.hoveredWindow.className || ""
+                className: root.hoveredWindow.className || "",
+                isWindow: true
             };
         }
 
@@ -76,6 +78,10 @@ PanelWindow {
         if (visible) {
             frozenView.captureFrame();
             root.isDragging = false;
+            root.dragStartX = 0;
+            root.dragStartY = 0;
+            root.dragCurrentX = 0;
+            root.dragCurrentY = 0;
             root.hoveredWindow = null;
             root.cursorX = -100;
             root.cursorY = -100;
@@ -220,6 +226,76 @@ PanelWindow {
     }
 
     // --------------------------------------------------------------------------
+    // Detectable Window Cards Preview (Window Mode Only)
+    // --------------------------------------------------------------------------
+    Repeater {
+        model: (root.service && root.service.captureMode === "window") ? root.service.currentWindows : []
+        delegate: Item {
+            id: winCard
+            required property var modelData
+
+            property real lx: modelData.x - root.screen.x
+            property real ly: modelData.y - root.screen.y
+            property bool isHovered: root.hoveredWindow === modelData
+
+            x: lx
+            y: ly
+            width: modelData.w
+            height: modelData.h
+            visible: (lx + modelData.w > 0 && lx < root.width && ly + modelData.h > 0 && ly < root.height)
+
+            // Window border preview
+            Rectangle {
+                anchors.fill: parent
+                color: isHovered ? "#22bb9af7" : "transparent"
+                border.color: isHovered ? Theme.purple : "#55bb9af7"
+                border.width: isHovered ? 2 : 1
+                radius: 4
+
+                Behavior on color { ColorAnimation { duration: 80 } }
+                Behavior on border.color { ColorAnimation { duration: 80 } }
+            }
+
+            // Window corner pill tag
+            Rectangle {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.margins: 6
+                implicitHeight: 22
+                implicitWidth: winTagRow.implicitWidth + 12
+                color: Theme.bgBase
+                opacity: isHovered ? 0.95 : 0.75
+                radius: 3
+                border.color: isHovered ? Theme.purple : Theme.borderDim
+                border.width: 1
+
+                RowLayout {
+                    id: winTagRow
+                    anchors.centerIn: parent
+                    spacing: 5
+
+                    Text {
+                        text: "󰖲"
+                        font.family: Theme.fontIcon
+                        font.pixelSize: 11
+                        color: winCard.isHovered ? Theme.purple : Theme.textMuted
+                        renderType: Theme.renderType
+                    }
+
+                    Text {
+                        text: winCard.modelData.className
+                        font.family: Theme.fontFamily
+                        font.pixelSize: Theme.fontCaption
+                        font.weight: winCard.isHovered ? Font.Bold : Font.DemiBold
+                        color: winCard.isHovered ? Theme.purple : Theme.textSecondary
+                        renderType: Theme.renderType
+                    }
+                }
+            }
+        }
+    }
+
+    // --------------------------------------------------------------------------
     // Crosshair Guide Lines (Region Mode Before Drag)
     // --------------------------------------------------------------------------
     Item {
@@ -244,7 +320,7 @@ PanelWindow {
     }
 
     // --------------------------------------------------------------------------
-    // Selection Bounding Box & Highlight
+    // Active Selection Bounding Box & Highlight
     // --------------------------------------------------------------------------
     Rectangle {
         id: selBox
@@ -253,13 +329,13 @@ PanelWindow {
         y: root.activeSel ? root.activeSel.y : 0
         width: root.activeSel ? root.activeSel.w : 0
         height: root.activeSel ? root.activeSel.h : 0
-        color: (root.service && root.service.captureMode === "window") ? "#1abb9af7" : "#127aa2f7"
-        border.color: (root.service && root.service.captureMode === "window") ? Theme.purple : Theme.cyan
+        color: (root.activeSel && root.activeSel.isWindow) ? "#20bb9af7" : "#127aa2f7"
+        border.color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
         border.width: 2
-        radius: (root.service && root.service.captureMode === "window") ? 6 : 0
+        radius: (root.activeSel && root.activeSel.isWindow) ? 6 : 0
 
-        Behavior on color { ColorAnimation { duration: 100 } }
-        Behavior on border.color { ColorAnimation { duration: 100 } }
+        Behavior on color { ColorAnimation { duration: 80 } }
+        Behavior on border.color { ColorAnimation { duration: 80 } }
     }
 
     // --------------------------------------------------------------------------
@@ -270,7 +346,7 @@ PanelWindow {
         visible: root.activeSel !== null && root.activeSel.w > 20 && root.activeSel.h > 20
         radius: 4
         color: Theme.bgBase
-        border.color: (root.service && root.service.captureMode === "window") ? Theme.purple : Theme.cyan
+        border.color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
         border.width: 1
         implicitHeight: badgeRow.implicitHeight + 8
         implicitWidth: badgeRow.implicitWidth + 14
@@ -291,18 +367,18 @@ PanelWindow {
             spacing: 6
 
             Text {
-                text: (root.service && root.service.captureMode === "window") ? "󰖲" : "󰩬"
+                text: (root.activeSel && root.activeSel.isWindow) ? "󰖲" : "󰩬"
                 renderType: Theme.renderType
                 font.family: Theme.fontIcon
                 font.pixelSize: 12
-                color: (root.service && root.service.captureMode === "window") ? Theme.purple : Theme.cyan
+                color: (root.activeSel && root.activeSel.isWindow) ? Theme.purple : Theme.cyan
             }
 
             Text {
                 text: {
                     if (!root.activeSel) return "";
-                    let dim = Math.round(root.activeSel.w) + " × " + Math.round(root.activeSel.h);
-                    if (root.service && root.service.captureMode === "window" && root.activeSel.className) {
+                    let dim = Math.round(root.activeSel.w) + " × " + Math.round(root.activeSel.h) + " px";
+                    if (root.activeSel.isWindow && root.activeSel.className) {
                         return root.activeSel.className + "  (" + dim + ")";
                     }
                     return dim;
@@ -345,7 +421,7 @@ PanelWindow {
 
             Text {
                 text: (root.service && root.service.captureMode === "window")
-                    ? "Click window to capture • Right-click or Esc to cancel"
+                    ? "Click window or drag custom area • Right-click or Esc to cancel"
                     : "Drag to select capture region • Right-click or Esc to cancel"
                 renderType: Theme.renderType
                 font.family: Theme.fontFamily
@@ -357,14 +433,14 @@ PanelWindow {
     }
 
     // --------------------------------------------------------------------------
-    // Mouse Interaction
+    // Mouse Interaction (Click Window OR Drag Region)
     // --------------------------------------------------------------------------
     MouseArea {
         id: mouseArea
         anchors.fill: parent
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.RightButton
-        cursorShape: (root.service && root.service.captureMode === "window")
+        cursorShape: (root.service && root.service.captureMode === "window" && root.hoveredWindow)
             ? Qt.PointingHandCursor
             : Qt.CrossCursor
 
@@ -375,13 +451,11 @@ PanelWindow {
             }
 
             if (mouse.button === Qt.LeftButton && root.service) {
-                if (root.service.captureMode === "region") {
-                    root.isDragging = true;
-                    root.dragStartX = mouse.x;
-                    root.dragStartY = mouse.y;
-                    root.dragCurrentX = mouse.x;
-                    root.dragCurrentY = mouse.y;
-                }
+                root.isDragging = true;
+                root.dragStartX = mouse.x;
+                root.dragStartY = mouse.y;
+                root.dragCurrentX = mouse.x;
+                root.dragCurrentY = mouse.y;
             }
         }
 
@@ -389,12 +463,12 @@ PanelWindow {
             root.cursorX = mouse.x;
             root.cursorY = mouse.y;
 
-            if (root.service && root.service.captureMode === "region") {
-                if (root.isDragging) {
-                    root.dragCurrentX = mouse.x;
-                    root.dragCurrentY = mouse.y;
-                }
-            } else if (root.service && root.service.captureMode === "window") {
+            if (root.isDragging) {
+                root.dragCurrentX = mouse.x;
+                root.dragCurrentY = mouse.y;
+            }
+
+            if (root.service && root.service.captureMode === "window") {
                 let gx = mouse.x + root.screen.x;
                 let gy = mouse.y + root.screen.y;
                 root.hoveredWindow = root.service.hitTestWindow(gx, gy);
@@ -402,28 +476,31 @@ PanelWindow {
         }
 
         onReleased: (mouse) => {
-            if (root.service && root.service.captureMode === "region" && root.isDragging) {
-                root.isDragging = false;
-                let x = Math.min(root.dragStartX, root.dragCurrentX);
-                let y = Math.min(root.dragStartY, root.dragCurrentY);
-                let w = Math.abs(root.dragCurrentX - root.dragStartX);
-                let h = Math.abs(root.dragCurrentY - root.dragStartY);
+            if (!root.service) return;
 
-                if (w >= 10 && h >= 10) {
-                    root.saveCrop(x, y, w, h, root.service.openMarkupOnFinish);
-                } else {
-                    root.service.cancelCapture();
-                }
+            let w = Math.abs(root.dragCurrentX - root.dragStartX);
+            let h = Math.abs(root.dragCurrentY - root.dragStartY);
+            let x = Math.min(root.dragStartX, root.dragCurrentX);
+            let y = Math.min(root.dragStartY, root.dragCurrentY);
+            root.isDragging = false;
+
+            // 1. User dragged a custom area (w >= 12 && h >= 12)
+            if (w >= 12 && h >= 12) {
+                root.saveCrop(x, y, w, h, root.service.openMarkupOnFinish);
+                return;
             }
-        }
 
-        onClicked: (mouse) => {
-            if (mouse.button === Qt.LeftButton && root.service && root.service.captureMode === "window") {
-                if (root.hoveredWindow) {
-                    let lx = root.hoveredWindow.x - root.screen.x;
-                    let ly = root.hoveredWindow.y - root.screen.y;
-                    root.saveCrop(lx, ly, root.hoveredWindow.w, root.hoveredWindow.h, root.service.openMarkupOnFinish);
-                }
+            // 2. Single-click on a window in window mode
+            if (root.service.captureMode === "window" && root.hoveredWindow) {
+                let lx = root.hoveredWindow.x - root.screen.x;
+                let ly = root.hoveredWindow.y - root.screen.y;
+                root.saveCrop(lx, ly, root.hoveredWindow.w, root.hoveredWindow.h, root.service.openMarkupOnFinish);
+                return;
+            }
+
+            // 3. Clicked empty area in region mode -> cancel
+            if (root.service.captureMode === "region") {
+                root.service.cancelCapture();
             }
         }
     }
@@ -453,4 +530,3 @@ PanelWindow {
         }
     }
 }
-

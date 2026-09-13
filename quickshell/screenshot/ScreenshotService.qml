@@ -11,6 +11,7 @@ Scope {
     property bool isHudOpen: false
     property string captureMode: "idle" // "idle" | "region" | "window"
     property bool openMarkupOnFinish: true
+    property bool pendingWindowCapture: false
 
     // Active client windows enumerated for window mode
     property var currentWindows: []
@@ -45,13 +46,30 @@ Scope {
         command: ["bash", "-c", "hyprctl -j monitors 2>/dev/null; echo '---DELIM---'; hyprctl -j clients 2>/dev/null"]
         stdout: StdioCollector { id: hyprQueryOut }
         onExited: (code) => {
-            if (code === 0) {
+            if (code === 0 && hyprQueryOut.text) {
                 root.parseHyprlandData(hyprQueryOut.text);
+            }
+            if (root.pendingWindowCapture) {
+                root.pendingWindowCapture = false;
+                windowReadyTimer.start();
             }
         }
     }
 
-    function refreshWindows() {
+    Timer {
+        id: windowReadyTimer
+        interval: 60
+        repeat: false
+        onTriggered: {
+            root.captureMode = "window";
+        }
+    }
+
+    function refreshWindows(andStartCapture, openMarkup) {
+        if (andStartCapture) {
+            root.pendingWindowCapture = true;
+            root.openMarkupOnFinish = (openMarkup !== false);
+        }
         hyprQueryProc.running = false;
         hyprQueryProc.running = true;
     }
@@ -67,8 +85,12 @@ Scope {
             let monitors = JSON.parse(monText);
             let activeWs = [];
             for (let i = 0; i < monitors.length; i++) {
-                if (monitors[i].activeWorkspace) {
-                    activeWs.push(monitors[i].activeWorkspace.id);
+                let m = monitors[i];
+                if (m.activeWorkspace && m.activeWorkspace.id !== undefined) {
+                    activeWs.push(m.activeWorkspace.id);
+                }
+                if (m.specialWorkspace && m.specialWorkspace.id !== 0 && m.specialWorkspace.id !== undefined) {
+                    activeWs.push(m.specialWorkspace.id);
                 }
             }
 
@@ -77,12 +99,15 @@ Scope {
             for (let i = 0; i < clients.length; i++) {
                 let c = clients[i];
                 if (!c.mapped || c.hidden) continue;
+
                 let wsId = c.workspace ? c.workspace.id : null;
-                if (wsId === null || activeWs.indexOf(wsId) === -1) continue;
+                let isPinned = !!c.pinned;
+                let isVisibleWs = isPinned || (wsId !== null && activeWs.indexOf(wsId) !== -1);
+                if (!isVisibleWs) continue;
 
                 let at = c.at || [0, 0];
                 let size = c.size || [0, 0];
-                if (size[0] <= 0 || size[1] <= 0) continue;
+                if (size[0] <= 10 || size[1] <= 10) continue;
 
                 windows.push({
                     x: at[0],
@@ -90,13 +115,13 @@ Scope {
                     w: size[0],
                     h: size[1],
                     title: c.title || "",
-                    className: c.class || "",
+                    className: c.class || c.initialClass || "Window",
+                    floating: !!c.floating,
+                    pinned: isPinned,
                     focusHistoryID: c.focusHistoryID !== undefined ? c.focusHistoryID : 999
                 });
             }
 
-            // Lowest focusHistoryID indicates top-most active window in Hyprland
-            windows.sort((a, b) => a.focusHistoryID - b.focusHistoryID);
             root.currentWindows = windows;
         } catch (e) {
             console.error("ScreenshotService: Error parsing Hyprland clients:", e);
@@ -104,13 +129,32 @@ Scope {
     }
 
     function hitTestWindow(gx, gy) {
+        let hits = [];
         for (let i = 0; i < root.currentWindows.length; i++) {
             let w = root.currentWindows[i];
             if (gx >= w.x && gx < w.x + w.w && gy >= w.y && gy < w.y + w.h) {
-                return w;
+                hits.push(w);
             }
         }
-        return null;
+        if (hits.length === 0) return null;
+
+        // Rank candidate windows under cursor:
+        // 1. Pinned windows first (always on top)
+        // 2. Floating windows next (always on top of tiled windows)
+        // 3. Smaller area next (nested / popup / dialog windows beat full-screen parents)
+        // 4. Lower focusHistoryID (most recently focused)
+        hits.sort((a, b) => {
+            if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+            if (a.floating !== b.floating) return a.floating ? -1 : 1;
+
+            let areaA = a.w * a.h;
+            let areaB = b.w * b.h;
+            if (areaA !== areaB) return areaA - areaB;
+
+            return a.focusHistoryID - b.focusHistoryID;
+        });
+
+        return hits[0];
     }
 
     // --------------------------------------------------------------------------
@@ -125,9 +169,6 @@ Scope {
 
         onTriggered: {
             root.openMarkupOnFinish = pendingMarkup;
-            if (pendingMode === "window") {
-                root.refreshWindows();
-            }
             root.captureMode = pendingMode;
         }
     }
@@ -135,6 +176,7 @@ Scope {
     function openHud() {
         Theme.closePopup();
         root.captureMode = "idle";
+        root.pendingWindowCapture = false;
         isHudOpen = true;
     }
 
@@ -159,15 +201,13 @@ Scope {
 
     function startWindowCapture(openMarkup) {
         closeHud();
-        root.refreshWindows();
-        unmapDelayTimer.pendingMode = "window";
-        unmapDelayTimer.pendingMarkup = (openMarkup !== false);
-        unmapDelayTimer.start();
+        refreshWindows(true, openMarkup);
     }
 
     function captureOutput(openMarkup) {
         closeHud();
         root.captureMode = "idle";
+        root.pendingWindowCapture = false;
         root.openMarkupOnFinish = (openMarkup !== false);
         root.triggerOutputCapture(root.openMarkupOnFinish);
     }
@@ -182,6 +222,7 @@ Scope {
 
     function cancelCapture() {
         root.captureMode = "idle";
+        root.pendingWindowCapture = false;
     }
 
     // --------------------------------------------------------------------------
@@ -194,6 +235,7 @@ Scope {
     function captureDirect() {
         closeHud();
         root.captureMode = "idle";
+        root.pendingWindowCapture = false;
 
         let targetFile = generateTargetPath();
         let fileName = targetFile.split("/").pop();
@@ -223,6 +265,7 @@ Scope {
 
     function onCaptureFinished(targetFile, openMarkup) {
         root.captureMode = "idle";
+        root.pendingWindowCapture = false;
 
         let fileName = targetFile.split("/").pop();
         let cmd = [
