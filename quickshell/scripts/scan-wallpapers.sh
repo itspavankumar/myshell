@@ -39,7 +39,7 @@ case "$THEME" in
     "gruvbox")
         candidates=("Gruvbox" "gruvbox" "Minimal")
         ;;
-    "solitude"|"matte-black"|"vantablack"|"lupine")
+    "solitude"|"lupine")
         candidates=("$THEME" "Minimal" "minimal")
         ;;
     "osaka-jade")
@@ -103,3 +103,4 @@ find "$TARGET_DIR" -maxdepth 1 -type f \( \
     -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o \
     -iname '*.webp' -o -iname '*.gif' \
 \) | sort
+

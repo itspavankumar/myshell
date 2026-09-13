@@ -625,9 +625,7 @@ def sync_icons(palette):
         "catppuccin": "WhiteSur-purple-dark",
         "solitude": "WhiteSur-dark",
         "gruvbox": "WhiteSur-yellow-dark",
-        "matte-black": "WhiteSur-orange-dark",
         "ristretto": "WhiteSur-orange-dark",
-        "vantablack": "WhiteSur-grey-dark",
     }
 
     icon_theme = whitesur_map.get(theme_id, "WhiteSur-dark")
