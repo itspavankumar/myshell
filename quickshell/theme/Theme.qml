@@ -30,16 +30,16 @@ Item {
         }
     }
 
-    // Process to persist active theme
+    // Process to persist active theme and asynchronously sync external apps
     Process {
-        id: writeThemeProc
+        id: persistAndSyncProc
     }
 
     IpcHandler {
         target: "theme"
 
         function setTheme(name: string): void {
-            if (Palettes.list.includes(name)) {
+            if (Palettes.list.includes(name) && root.currentTheme !== name) {
                 root.currentTheme = name;
             }
         }
@@ -52,8 +52,20 @@ Item {
     function setTheme(themeId) {
         if (!Palettes.list.includes(themeId)) return;
         currentTheme = themeId;
-        writeThemeProc.command = [(Quickshell.env("HOME") || "") + "/.config/quickshell/start.sh", "theme", themeId];
-        writeThemeProc.running = true;
+
+        let configDir = (Quickshell.env("HOME") || "") + "/.config/quickshell";
+        let activeFile = configDir + "/theme/active_theme.txt";
+        let scriptPath = configDir + "/scripts/sync-apps.py";
+
+        // Persist active theme and run sync-apps.py asynchronously in background
+        persistAndSyncProc.command = [
+            "bash", "-c",
+            "echo \"$1\" > \"$2\"; " +
+            "python3 \"$3\" \"$1\" >/dev/null 2>&1 &",
+            "_", themeId, activeFile, scriptPath
+        ];
+        persistAndSyncProc.running = false;
+        persistAndSyncProc.running = true;
     }
 
     // Fonts (Apple San Francisco Optical System)

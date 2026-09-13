@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import Qt.labs.folderlistmodel
 import "../theme"
 
 Scope {
@@ -15,52 +16,141 @@ Scope {
     property string activeFolder: ""
     property bool applyRandomOnScan: false
 
-    property var tempWallpapers: []
+    // --------------------------------------------------------------------------
+    // Folder & Image Scanners (Native Qt Quick inotify live watching)
+    // --------------------------------------------------------------------------
+    FolderListModel {
+        id: dirModel
+        folder: "file://" + (Quickshell.env("HOME") || "") + "/Pictures/Wallpapers"
+        showDirs: true
+        showFiles: false
+        showDotAndDotDot: false
 
-    // Process to scan wallpapers using theme-aware scanner
-    Process {
-        id: scanProc
-        command: [
-            (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/scan-wallpapers.sh",
-            Theme.currentTheme
-        ]
-        stdout: SplitParser {
-            onRead: (line) => {
-                if (!line) return;
-                line = line.trim();
-                if (!line) return;
-                if (line.startsWith("FOLDER:")) {
-                    root.activeFolder = line.substring(7);
-                    return;
-                }
-                let parts = line.split("/");
-                let name = parts[parts.length - 1];
-                root.tempWallpapers.push({ path: line, name: name });
+        onStatusChanged: {
+            if (status === FolderListModel.Ready) {
+                root.resolveAndLoadFolder();
             }
         }
-        onExited: {
-            root.wallpapers = root.tempWallpapers;
-            // Update selected index to current active wallpaper if found
-            let foundIndex = -1;
-            for (let i = 0; i < root.wallpapers.length; i++) {
-                if (root.wallpapers[i].path === root.currentWallpaper) {
-                    foundIndex = i;
-                    break;
-                }
-            }
-            root.selectedIndex = (foundIndex !== -1) ? foundIndex : 0;
-
-            if (root.randomOnStartup && root.wallpapers.length > 0) {
-                root.randomOnStartup = false;
-                root.applyRandom();
-            } else if (root.applyRandomOnScan && root.wallpapers.length > 0) {
-                root.applyRandomOnScan = false;
-                root.applyRandom();
-            }
+        onCountChanged: {
+            root.resolveAndLoadFolder();
         }
     }
 
+    FolderListModel {
+        id: imageModel
+        nameFilters: ["*.jpg", "*.jpeg", "*.png", "*.webp", "*.gif"]
+        showFiles: true
+        showDirs: false
+        showDotAndDotDot: false
+
+        onStatusChanged: {
+            if (status === FolderListModel.Ready) {
+                root.rebuildWallpapers();
+            }
+        }
+        onCountChanged: {
+            root.rebuildWallpapers();
+        }
+    }
+
+    function getThemeCandidates(themeName) {
+        switch (themeName) {
+            case "tokyo-night":
+                return ["Tokyo Night", "Tokyo-Night", "tokyo-night", "TokyoNight"];
+            case "catppuccin":
+                return ["Catppuccin", "catppuccin", "Catppuccin Mocha", "catppuccin-mocha"];
+            case "nord":
+                return ["Nord", "nord"];
+            case "everforest":
+                return ["Everforest", "everforest"];
+            case "gruvbox":
+                return ["Gruvbox", "gruvbox", "Minimal"];
+            case "solitude":
+            case "lupine":
+                return [themeName, "Minimal", "minimal"];
+            case "osaka-jade":
+                return ["Osaka Jade", "osaka-jade", "Everforest", "Minimal"];
+            case "ristretto":
+                return ["Ristretto", "ristretto", "Gruvbox", "Minimal"];
+            default:
+                return [themeName, "Minimal"];
+        }
+    }
+
+    function resolveAndLoadFolder() {
+        let availableDirs = [];
+        for (let i = 0; i < dirModel.count; i++) {
+            availableDirs.push(dirModel.get(i, "fileName"));
+        }
+
+        let candidates = getThemeCandidates(Theme.currentTheme);
+        let target = "";
+
+        // 1. Search theme-specific candidate folders
+        for (let c of candidates) {
+            if (availableDirs.includes(c)) {
+                target = c;
+                break;
+            }
+        }
+
+        // 2. Fallback to Minimal
+        if (!target && availableDirs.includes("Minimal")) {
+            target = "Minimal";
+        }
+
+        // 3. Fallback to first available subfolder
+        if (!target && availableDirs.length > 0) {
+            target = availableDirs[0];
+        }
+
+        root.activeFolder = target || "Wallpapers";
+
+        let basePath = (Quickshell.env("HOME") || "") + "/Pictures/Wallpapers";
+        let targetUrl = target ? ("file://" + basePath + "/" + target) : ("file://" + basePath);
+
+        if (imageModel.folder !== targetUrl) {
+            imageModel.folder = targetUrl;
+        } else {
+            root.rebuildWallpapers();
+        }
+    }
+
+    function rebuildWallpapers() {
+        let list = [];
+        for (let i = 0; i < imageModel.count; i++) {
+            let fPath = imageModel.get(i, "filePath");
+            let fName = imageModel.get(i, "fileName");
+            if (fPath) {
+                if (fPath.startsWith("file://")) fPath = fPath.substring(7);
+                list.push({ path: fPath, name: fName || "" });
+            }
+        }
+
+        root.wallpapers = list;
+
+        // Sync selected index to current active wallpaper if found
+        let foundIndex = -1;
+        for (let i = 0; i < root.wallpapers.length; i++) {
+            if (root.wallpapers[i].path === root.currentWallpaper) {
+                foundIndex = i;
+                break;
+            }
+        }
+        root.selectedIndex = (foundIndex !== -1) ? foundIndex : 0;
+
+        if (root.randomOnStartup && root.wallpapers.length > 0) {
+            root.randomOnStartup = false;
+            root.applyRandom();
+        } else if (root.applyRandomOnScan && root.wallpapers.length > 0) {
+            root.applyRandomOnScan = false;
+            root.applyRandom();
+        }
+    }
+
+    // --------------------------------------------------------------------------
     // Process to query active wallpaper from awww
+    // --------------------------------------------------------------------------
     Process {
         id: queryProc
         command: ["awww", "query"]
@@ -85,15 +175,9 @@ Scope {
 
     function refresh(applyRandom) {
         root.applyRandomOnScan = !!applyRandom;
-        root.tempWallpapers = [];
         queryProc.running = false;
         queryProc.running = true;
-        scanProc.command = [
-            (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/scan-wallpapers.sh",
-            Theme.currentTheme
-        ];
-        scanProc.running = false;
-        scanProc.running = true;
+        root.resolveAndLoadFolder();
     }
 
     function open() {

@@ -99,7 +99,7 @@ case "$1" in
         set_wallpaper "$2"
         ;;
     screenshot)
-        quickshell ipc -p "$CONFIG_DIR/screenshot.qml" call screenshot capture "${2:-region}" 2>/dev/null || "$CONFIG_DIR/scripts/screenshot.sh" "${2:-region}"
+        quickshell ipc -p "$CONFIG_DIR/screenshot.qml" call screenshot capture "${2:-region}" 2>/dev/null || true
         ;;
     status)
         status
