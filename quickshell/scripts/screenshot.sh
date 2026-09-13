@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # screenshot.sh - Robust Wayland Screenshot & Annotation Handler
-# Supports direct instant capture and interactive Satty annotation
+# Supports direct instant capture, interactive window click, and Satty markup
 # ==============================================================================
 
 set -euo pipefail
@@ -20,7 +20,7 @@ cleanup() {
 trap cleanup EXIT
 
 # ------------------------------------------------------------------------------
-# Mode: Direct instant fullscreen capture (no satty editor)
+# Mode: Direct instant fullscreen capture (Print hotkey)
 # ------------------------------------------------------------------------------
 if [ "$MODE" = "direct" ] || [ "$MODE" = "screen-direct" ] || [ "$MODE" = "fullscreen-direct" ]; then
     if ! command -v grim &>/dev/null; then
@@ -46,7 +46,7 @@ case "$MODE" in
             notify-send -a "Screenshot" -u critical "Screenshot Error" "'slurp' is required for region selection."
             exit 1
         fi
-        # Select region with clean dark-frosted overlay and accent border
+        # Select region with clean dark-frosted overlay and cyan accent border
         GEOM=$(slurp -d -b "#0c0e14aa" -c "#7aa2f7ff" -s "#7aa2f722" -w 2 2>/dev/null || true)
         if [ -z "$GEOM" ]; then
             # User cancelled selection
@@ -54,18 +54,36 @@ case "$MODE" in
         fi
         ;;
     window)
-        # 1. Try to get active window from Hyprland
-        if command -v hyprctl &>/dev/null; then
-            GEOM=$(hyprctl activewindow -j 2>/dev/null | jq -r 'if .at and .size and .at[0] >= 0 then "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])" else empty end' 2>/dev/null || true)
+        if ! command -v slurp &>/dev/null; then
+            notify-send -a "Screenshot" -u critical "Screenshot Error" "'slurp' is required for window selection."
+            exit 1
         fi
-        # 2. If no active window or hyprctl failed, let user click a window
-        if [ -z "$GEOM" ] && command -v slurp &>/dev/null && command -v hyprctl &>/dev/null; then
-            GEOM=$(hyprctl clients -j 2>/dev/null | jq -r '.[] | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' 2>/dev/null | slurp -d -b "#0c0e14aa" -c "#7aa2f7ff" -s "#7aa2f722" -w 2 2>/dev/null || true)
+
+        # Extract geometry boxes of visible windows on the active workspace(s)
+        boxes=""
+        if command -v hyprctl &>/dev/null && command -v jq &>/dev/null; then
+            monitors=$(hyprctl -j monitors 2>/dev/null || echo '[]')
+            ws_ids=$(echo "$monitors" | jq -r '[.[].activeWorkspace.id] | join(",")')
+            boxes=$(hyprctl -j clients 2>/dev/null | jq -r --arg ws "$ws_ids" '
+                ($ws | split(",") | map(tonumber? // empty)) as $active_workspaces
+                | .[]
+                | select(.mapped == true and .hidden == false)
+                | select(.workspace.id as $w | $active_workspaces | index($w))
+                | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"
+            ' 2>/dev/null || true)
         fi
-        # 3. Fallback to interactive region selection
-        if [ -z "$GEOM" ] && command -v slurp &>/dev/null; then
-            GEOM=$(slurp -d -b "#0c0e14aa" -c "#7aa2f7ff" -s "#7aa2f722" -w 2 2>/dev/null || true)
-            if [ -z "$GEOM" ]; then exit 0; fi
+
+        if [ -n "$boxes" ]; then
+            # Interactive click to select from open windows with purple accent border
+            GEOM=$(echo "$boxes" | slurp -d -b "#0c0e14aa" -c "#bb9af7ff" -s "#bb9af722" -w 2 -r 2>/dev/null || true)
+        else
+            # Fallback to interactive selection if no window boxes found
+            GEOM=$(slurp -d -b "#0c0e14aa" -c "#bb9af7ff" -s "#bb9af722" -w 2 2>/dev/null || true)
+        fi
+
+        if [ -z "$GEOM" ]; then
+            # User cancelled window selection
+            exit 0
         fi
         ;;
     output|screen|fullscreen)
