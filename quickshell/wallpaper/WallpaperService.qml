@@ -270,6 +270,9 @@ Scope {
         }
 
         function themeChanged(name: string): void {
+            if (name && Palettes.list.includes(name) && Theme.currentTheme !== name) {
+                Theme.currentTheme = name;
+            }
             root.refresh(true);
         }
 

@@ -57,14 +57,10 @@ set_theme() {
         echo "Usage: start.sh theme <theme-name>"
         return
     fi
-    echo "$theme_name" > "$CONFIG_DIR/theme/active_theme.txt"
-    for cfg in "${CONFIGS[@]}"; do
-        quickshell ipc -p "$CONFIG_DIR/$cfg.qml" call theme setTheme "$theme_name" 2>/dev/null || true
-    done
-    python3 "$CONFIG_DIR/scripts/sync-apps.py" "$theme_name" || true
-    quickshell ipc -p "$CONFIG_DIR/wallpaper.qml" call wallpaper themeChanged "$theme_name" 2>/dev/null || true
+    "$CONFIG_DIR/scripts/set-theme.sh" "$theme_name"
     echo "Theme successfully set to '$theme_name'. Shell and applications updated live."
 }
+
 
 set_wallpaper() {
     local action="$1"

@@ -96,6 +96,16 @@ Scope {
 
             visible: root.isOpen || card.opacity > 0.005
 
+            Connections {
+                target: root
+                function onIsOpenChanged() {
+                    if (root.isOpen) {
+                        keyHandler.forceActiveFocus();
+                        themeListView.positionViewAtIndex(root.selectedIndex, ListView.Center);
+                    }
+                }
+            }
+
             // Outside dismisser
             MouseArea {
                 anchors.fill: parent
@@ -129,18 +139,20 @@ Scope {
                 Item {
                     id: keyHandler
                     anchors.fill: parent
-                    focus: root.isOpen
+                    focus: true
 
                     Keys.onEscapePressed: root.close()
 
                     Keys.onUpPressed: {
                         if (root.selectedIndex > 0) root.selectedIndex--;
                         else root.selectedIndex = root.themeList.length - 1;
+                        themeListView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
                     }
 
                     Keys.onDownPressed: {
                         if (root.selectedIndex < root.themeList.length - 1) root.selectedIndex++;
                         else root.selectedIndex = 0;
+                        themeListView.positionViewAtIndex(root.selectedIndex, ListView.Contain);
                     }
 
                     Keys.onReturnPressed: {
@@ -242,6 +254,7 @@ Scope {
                         Layout.fillHeight: true
                         clip: true
                         spacing: 6
+                        boundsBehavior: Flickable.StopAtBounds
                         model: root.themeList
                         currentIndex: root.selectedIndex
 

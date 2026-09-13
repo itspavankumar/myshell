@@ -12,6 +12,18 @@ Item {
     readonly property var activePalette: Palettes.get(currentTheme)
 
     // Live file watcher for theme changes across all modular instances
+    Timer {
+        id: watcherRetryTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            let t = themeWatcher.text().trim();
+            if (t && Palettes.list.includes(t) && root.currentTheme !== t) {
+                root.currentTheme = t;
+            }
+        }
+    }
+
     FileView {
         id: themeWatcher
         path: (Quickshell.env("HOME") || "") + "/.config/quickshell/theme/active_theme.txt"
@@ -20,6 +32,8 @@ Item {
             let t = themeWatcher.text().trim();
             if (t && Palettes.list.includes(t) && root.currentTheme !== t) {
                 root.currentTheme = t;
+            } else if (!t) {
+                watcherRetryTimer.restart();
             }
         }
         onLoaded: {
@@ -30,9 +44,18 @@ Item {
         }
     }
 
-    // Process to persist active theme and asynchronously sync external apps
+    property string pendingTheme: ""
+
+    // Process to run unified theme switch script
     Process {
         id: persistAndSyncProc
+        onExited: {
+            if (root.pendingTheme !== "" && root.pendingTheme !== root.currentTheme) {
+                let next = root.pendingTheme;
+                root.pendingTheme = "";
+                root.setTheme(next);
+            }
+        }
     }
 
     IpcHandler {
@@ -53,18 +76,13 @@ Item {
         if (!Palettes.list.includes(themeId)) return;
         currentTheme = themeId;
 
-        let configDir = (Quickshell.env("HOME") || "") + "/.config/quickshell";
-        let activeFile = configDir + "/theme/active_theme.txt";
-        let scriptPath = configDir + "/scripts/sync-apps.py";
+        if (persistAndSyncProc.running) {
+            pendingTheme = themeId;
+            return;
+        }
 
-        // Persist active theme and run sync-apps.py asynchronously in background
-        persistAndSyncProc.command = [
-            "bash", "-c",
-            "echo \"$1\" > \"$2\"; " +
-            "python3 \"$3\" \"$1\" >/dev/null 2>&1 &",
-            "_", themeId, activeFile, scriptPath
-        ];
-        persistAndSyncProc.running = false;
+        let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/set-theme.sh";
+        persistAndSyncProc.command = ["bash", scriptPath, themeId];
         persistAndSyncProc.running = true;
     }
 
