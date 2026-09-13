@@ -53,12 +53,23 @@ chmod +x install.sh
 ```
 
 The script automatically:
-1. Installs all required official packages (`hyprland`, `quickshell`, `ghostty`, `pipewire`, `polkit-gnome`, etc.).
-2. Auto-detects ASUS hardware and installs `asusctl` + enables `asusd.service`.
+1. Installs all official Arch packages:
+   - Compositor, Audio & Wayland (`hyprland`, `quickshell`, `ghostty`, `pipewire`, `polkit-gnome`, portals, etc.).
+   - Full Nautilus file manager suite (`nautilus`, `nautilus-python`, `sushi`, `ffmpegthumbnailer`, `gst-thumbnailers`, `gvfs-mtp`, `gvfs-smb`, `gvfs-afc`, `gnome-autoar`, archives).
+   - Core GNOME apps styled by the theme synchronizer (`loupe`, `showtime`, `decibels`, `snapshot`, `gnome-calculator`, `gnome-system-monitor`, etc.).
+   - Essential utilities (`mpv`, `btop`, `ncdu`, `neovim`, `nwg-look`, `github-cli`, `yt-dlp`, `zsh`).
+2. Auto-detects ASUS laptops and installs `asusctl` + enables `asusd.service`.
 3. Bootstraps `yay` (via `yay-bin`) if no AUR helper is present.
-4. Installs required AUR packages (`apple-fonts` for SF Pro, `apple_cursor`, `whitesur-icon-theme`, `zen-browser-bin`).
+4. Installs required AUR packages:
+   - `apple-fonts` (Apple SF Pro typography)
+   - `apple_cursor` (`macOS-White` cursor)
+   - `whitesur-icon-theme` (WhiteSur icon family for live palette matching)
+   - `zen-browser-bin` (Zen Browser with Quickshell CSS integration)
+   - `nautilus-open-any-terminal` (Nautilus context menu "Open in Ghostty")
+   - `nautilus-admin-gtk4` (Nautilus context menu "Open as Administrator")
+   - `mpv-modernx`, `localsend-bin`, `vscodium-bin`, `bluetuith`
 5. Enables and starts system services (`NetworkManager`, `bluetooth`, `asusd`).
-6. Configures GTK3/GTK4 dark mode (`adw-gtk3-dark`), `macOS-White` cursor, and Apple SF Pro typography.
+6. Configures GTK3/GTK4 dark mode (`adw-gtk3-dark`), `macOS-White` cursor, Apple SF Pro typography, and Nautilus preferences.
 7. Symlinks `hypr`, `quickshell`, and `ghostty` into `~/.config/`.
 8. Creates `~/Pictures/Wallpapers` ready for your wallpaper collection.
 9. Compiles and synchronizes live palettes across GTK, Ghostty, VSCodium, and Zen Browser.
@@ -69,13 +80,15 @@ The script automatically:
 
 If you prefer to inspect or run each step manually rather than using `./install.sh`:
 
-### 1. Audio, Bluetooth, Network & Drivers
+### 1. Base Drivers, Audio, Bluetooth & Portals
 ```bash
 sudo pacman -S --needed \
-    pipewire pipewire-pulse pipewire-alsa wireplumber \
+    pipewire pipewire-pulse pipewire-alsa wireplumber libpulse \
     bluez bluez-utils \
     networkmanager \
-    polkit-gnome
+    polkit-gnome \
+    hyprland xdg-desktop-portal-hyprland xdg-desktop-portal-gtk \
+    qt5-wayland qt6-wayland qt6-5compat
 ```
 
 Enable essential system services:
@@ -84,52 +97,50 @@ sudo systemctl enable --now NetworkManager.service
 sudo systemctl enable --now bluetooth.service
 ```
 
-### 2. Core Desktop & Hyprland
+### 2. Shell, Terminal & Utilities
 ```bash
 sudo pacman -S --needed \
-    hyprland \
-    xdg-desktop-portal-hyprland \
-    quickshell \
-    ghostty \
-    awww \
-    brightnessctl \
-    wl-clipboard \
-    cliphist \
-    playerctl
+    quickshell ghostty awww brightnessctl \
+    wl-clipboard cliphist hyprshot libnotify upower xdg-user-dirs \
+    adw-gtk-theme ttf-jetbrains-mono-nerd noto-fonts-emoji otf-font-awesome \
+    base-devel git curl jq python python-gobject
 ```
 
-### 3. ASUS ROG / TUF Hardware Controls (Optional, for ASUS Laptops)
-The shell has built-in integration with `asusctl` for fan profiles and ROG system controls:
+### 3. Nautilus File Manager & Drive Integration
+```bash
+sudo pacman -S --needed \
+    nautilus nautilus-python sushi \
+    ffmpegthumbnailer gst-thumbnailers \
+    gvfs gvfs-mtp gvfs-smb gvfs-afc gvfs-gphoto2 gvfs-dnssd \
+    gnome-autoar zip unzip 7zip
+```
+
+### 4. Desktop Applications & Tools
+```bash
+sudo pacman -S --needed \
+    loupe showtime decibels snapshot \
+    gnome-calculator gnome-clocks gnome-system-monitor gnome-font-viewer gnome-music \
+    baobab simple-scan mpv btop ncdu neovim nwg-look github-cli yt-dlp zsh
+```
+
+### 5. ASUS ROG / TUF Hardware Controls (For ASUS Laptops)
 ```bash
 sudo pacman -S --needed asusctl
 sudo systemctl enable --now asusd.service
 ```
 
-### 4. AUR Helper & AUR Packages (Fonts & Apps)
-Install `yay` (if not already installed):
+### 6. AUR Packages
 ```bash
-sudo pacman -S --needed base-devel git
-git clone https://aur.archlinux.org/yay.git /tmp/yay
-cd /tmp/yay && makepkg -si && cd -
+yay -S --needed \
+    apple-fonts apple_cursor whitesur-icon-theme zen-browser-bin \
+    nautilus-open-any-terminal nautilus-admin-gtk4 mpv-modernx localsend-bin vscodium-bin bluetuith
 ```
 
-Install typography and browser:
+### 7. Run Setup
 ```bash
-# San Francisco & New York Apple Fonts (Required for shell typography)
-yay -S --needed apple-fonts
-
-# Zen Browser (Firefox-based browser with dynamic theme synchronization)
-yay -S --needed zen-browser-bin
-
-# Optional: macOS cursor theme
-yay -S --needed apple_cursor
-```
-
-### 5. Link and Start the Shell
-```bash
-git clone git@github.com:itspavankumar/myshell.git ~/Projects/myshell
+git clone https://github.com/itspavankumar/myshell.git ~/Projects/myshell
 cd ~/Projects/myshell
-./install.sh
+./install.sh --symlinks-only
 ```
 
 Now launch Hyprland:

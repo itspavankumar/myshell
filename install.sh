@@ -2,7 +2,7 @@
 # ==============================================================================
 # myshell - Automated System Setup & Installer
 # Transforms a minimal Arch Linux installation into a fully configured desktop:
-# Hyprland (Lua) + Quickshell + Ghostty + Zen Browser + Unified Theming
+# Hyprland (Lua) + Quickshell + Ghostty + Zen Browser + Nautilus + Unified Theming
 # ==============================================================================
 
 set -euo pipefail
@@ -27,7 +27,7 @@ log_step()    { echo -e "\n${CYAN}${BOLD}==> $*${RESET}"; }
 
 # Core Official Arch Packages (pacman)
 PACMAN_PACKAGES=(
-    # Audio & Media
+    # Audio & Multimedia
     pipewire
     pipewire-pulse
     pipewire-alsa
@@ -46,6 +46,7 @@ PACMAN_PACKAGES=(
     xdg-desktop-portal-gtk
     qt5-wayland
     qt6-wayland
+    qt6-5compat
     polkit-gnome
 
     # Shell, Terminal & Utilities
@@ -56,8 +57,49 @@ PACMAN_PACKAGES=(
     wl-clipboard
     cliphist
     hyprshot
-    nautilus
     libnotify
+    upower
+    xdg-user-dirs
+
+    # Nautilus File Manager & Drive / Network Integration
+    nautilus
+    nautilus-python
+    sushi
+    ffmpegthumbnailer
+    gst-thumbnailers
+    gvfs
+    gvfs-mtp
+    gvfs-smb
+    gvfs-afc
+    gvfs-gphoto2
+    gvfs-dnssd
+    gnome-autoar
+    zip
+    unzip
+    7zip
+
+    # GNOME Core Apps (Themed via sync-apps.py)
+    loupe
+    showtime
+    decibels
+    snapshot
+    gnome-calculator
+    gnome-clocks
+    gnome-system-monitor
+    gnome-font-viewer
+    gnome-music
+    baobab
+    simple-scan
+
+    # Utilities & Tools
+    mpv
+    btop
+    ncdu
+    neovim
+    nwg-look
+    github-cli
+    yt-dlp
+    zsh
 
     # Theming & Fonts
     adw-gtk-theme
@@ -76,10 +118,16 @@ PACMAN_PACKAGES=(
 
 # AUR Packages
 AUR_PACKAGES=(
-    apple-fonts          # SF Pro / New York typography
-    apple_cursor         # macOS-White cursor theme
-    whitesur-icon-theme  # WhiteSur icon family for live palette matching
-    zen-browser-bin      # Zen Browser with quickshell CSS integration
+    apple-fonts                 # SF Pro / New York typography
+    apple_cursor                # macOS-White cursor theme
+    whitesur-icon-theme         # WhiteSur icon family for live palette matching
+    zen-browser-bin             # Zen Browser with quickshell CSS integration
+    nautilus-open-any-terminal  # Right click "Open in Ghostty" in Nautilus
+    nautilus-admin-gtk4         # Right click "Open as Administrator" in Nautilus
+    mpv-modernx                 # Modern OSC interface for MPV
+    localsend-bin               # LocalSend cross-platform AirDrop alternative
+    vscodium-bin                # VSCodium code editor
+    bluetuith                   # Bluetooth TUI
 )
 
 check_environment() {
@@ -141,9 +189,12 @@ bootstrap_aur_helper() {
 }
 
 install_aur_packages() {
-    log_step "Installing AUR packages (${AUR_PACKAGES[*]})..."
-    "$AUR_HELPER" -S --needed --noconfirm "${AUR_PACKAGES[@]}"
-    log_success "AUR packages installed."
+    log_step "Installing AUR packages..."
+    for pkg in "${AUR_PACKAGES[@]}"; do
+        log_info "Installing AUR package: $pkg"
+        "$AUR_HELPER" -S --needed --noconfirm "$pkg" || log_warn "Warning: Failed to install AUR package '$pkg', continuing..."
+    done
+    log_success "AUR package installation completed."
 }
 
 configure_services() {
@@ -164,7 +215,7 @@ configure_services() {
 }
 
 configure_gtk_and_desktop() {
-    log_step "Configuring GTK, cursor, fonts, and dark mode..."
+    log_step "Configuring GTK, cursor, fonts, and desktop defaults..."
 
     local gtk3_dir="$CONFIG_DIR/gtk-3.0"
     local gtk4_dir="$CONFIG_DIR/gtk-4.0"
@@ -210,8 +261,14 @@ EOF
 Inherits=macOS-White
 EOF
 
-    # GSettings (if schemas are present)
+    # User directories (Downloads, Documents, Pictures, etc.)
+    if command -v xdg-user-dirs-update &>/dev/null; then
+        xdg-user-dirs-update || true
+    fi
+
+    # GSettings interface & nautilus preferences
     if command -v gsettings &>/dev/null; then
+        # Appearance, Cursor & Fonts
         gsettings set org.gnome.desktop.interface cursor-theme 'macOS-White' 2>/dev/null || true
         gsettings set org.gnome.desktop.interface cursor-size 16 2>/dev/null || true
         gsettings set org.gnome.desktop.interface icon-theme 'WhiteSur-dark' 2>/dev/null || true
@@ -220,9 +277,16 @@ EOF
         gsettings set org.gnome.desktop.interface font-name 'SF Pro Bold 11 @opsz=17,wght=700' 2>/dev/null || true
         gsettings set org.gnome.desktop.interface document-font-name 'SF Pro weight=860 12 @opsz=17,wght=860' 2>/dev/null || true
         gsettings set org.gnome.desktop.interface monospace-font-name 'JetBrainsMono Nerd Font Bold 11' 2>/dev/null || true
+
+        # Nautilus preferences
+        gsettings set org.gnome.nautilus.preferences show-create-link true 2>/dev/null || true
+        gsettings set org.gnome.nautilus.preferences show-delete-permanently true 2>/dev/null || true
+
+        # Nautilus open any terminal -> Ghostty
+        gsettings set com.github.stunkymonkey.nautilus-open-any-terminal terminal 'ghostty' 2>/dev/null || true
     fi
 
-    log_success "GTK, cursor, fonts, and dark mode configured."
+    log_success "GTK, cursor, fonts, and desktop defaults configured."
 }
 
 link_component() {
@@ -323,13 +387,14 @@ main() {
 
     if [ "$mode" = "ask" ]; then
         echo ""
-        echo "This script can perform a complete end-to-end installation:"
-        echo "  1. Install all official Arch Linux packages (Hyprland, Quickshell, Ghostty, Pipewire, etc.)"
-        echo "  2. Bootstrap yay (if needed) & install AUR packages (apple-fonts, apple_cursor, whitesur, zen-browser)"
+        echo "This script will perform a complete end-to-end installation:"
+        echo "  1. Install all official Arch Linux packages (Hyprland, Quickshell, Ghostty, Nautilus, GNOME apps, Pipewire, etc.)"
+        echo "  2. Bootstrap yay (if needed) & install AUR packages (apple-fonts, apple_cursor, whitesur, nautilus-admin, zen-browser, etc.)"
         echo "  3. Enable system services (NetworkManager, bluetooth, asusd if ASUS)"
         echo "  4. Configure GTK4/3 dark theme, macOS cursor, and SF Pro typography"
-        echo "  5. Symlink configs into ~/.config (hypr, quickshell, ghostty)"
-        echo "  6. Synchronize initial application themes"
+        echo "  5. Configure Nautilus defaults & Ghostty terminal integration"
+        echo "  6. Symlink configs into ~/.config (hypr, quickshell, ghostty)"
+        echo "  7. Synchronize initial application themes"
         echo ""
         read -rp "Perform full installation? [Y/n]: " choice
         case "${choice:-Y}" in
