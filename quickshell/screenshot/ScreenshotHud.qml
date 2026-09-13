@@ -1,7 +1,5 @@
 import QtQuick
 import QtQuick.Layouts
-import QtQuick.Shapes
-import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import "../theme"
@@ -16,16 +14,18 @@ PanelWindow {
     WlrLayershell.namespace: "quickshell-screenshot-hud"
     WlrLayershell.keyboardFocus: (root.service && root.service.isHudOpen) ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
+    // Cover full screen so Hyprland treats this as a non-docking overlay without window dodging
     anchors {
+        top: true
         bottom: true
         left: true
         right: true
     }
-    implicitHeight: 100
 
-    visible: (root.service && root.service.isHudOpen) || hudContainer.opacity > 0.005
+    // Instant unmapping on close so slurp/grim capture cleanly without overlay artifacts
+    visible: root.service && root.service.isHudOpen
 
-    // Click outside backdrop to dismiss
+    // Click anywhere on the transparent backdrop to dismiss
     MouseArea {
         anchors.fill: parent
         onClicked: {
@@ -37,22 +37,11 @@ PanelWindow {
         id: hudContainer
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: 28
+        anchors.bottomMargin: 36
         width: hudPill.width
         height: hudPill.height
 
-        opacity: (root.service && root.service.isHudOpen) ? 1.0 : 0.0
-        transform: Translate {
-            y: (root.service && root.service.isHudOpen) ? 0 : 16
-            Behavior on y {
-                NumberAnimation { duration: 180; easing.type: Easing.OutCubic }
-            }
-        }
-        Behavior on opacity {
-            NumberAnimation { duration: 150; easing.type: Easing.OutQuad }
-        }
-
-        // Prevent clicking inside HUD from dismissing
+        // Block clicks on the pill from hitting the backdrop dismisser
         MouseArea {
             anchors.fill: parent
         }
@@ -61,17 +50,14 @@ PanelWindow {
         Keys.onPressed: (event) => {
             if (!root.service) return;
 
-            if (event.key === Qt.Key_1 || event.key === Qt.Key_A || event.key === Qt.Key_R) {
-                root.service.capture("region", root.service.delaySeconds);
+            if (event.key === Qt.Key_1 || event.key === Qt.Key_R || event.key === Qt.Key_A) {
+                root.service.captureRegion();
                 event.accepted = true;
             } else if (event.key === Qt.Key_2 || event.key === Qt.Key_W) {
-                root.service.capture("window", root.service.delaySeconds);
+                root.service.captureWindow();
                 event.accepted = true;
             } else if (event.key === Qt.Key_3 || event.key === Qt.Key_F || event.key === Qt.Key_S) {
-                root.service.capture("output", root.service.delaySeconds);
-                event.accepted = true;
-            } else if (event.key === Qt.Key_T) {
-                root.service.cycleDelay();
+                root.service.captureOutput();
                 event.accepted = true;
             } else if (event.key === Qt.Key_Escape) {
                 root.service.closeHud();
@@ -82,7 +68,7 @@ PanelWindow {
         Rectangle {
             id: hudPill
             implicitHeight: 46
-            implicitWidth: contentRow.implicitWidth + 28
+            implicitWidth: contentRow.implicitWidth + 24
             color: Theme.bgGlass
             border.color: Theme.borderBright
             border.width: Theme.borderWidth
@@ -116,22 +102,22 @@ PanelWindow {
                     width: 1
                     height: 20
                     color: Theme.borderDim
-                    Layout.leftMargin: 4
-                    Layout.rightMargin: 4
+                    Layout.leftMargin: 2
+                    Layout.rightMargin: 2
                 }
 
-                // Mode 1: Area / Region
+                // Mode 1: Region / Area
                 Rectangle {
-                    id: areaBtn
+                    id: regionBtn
                     implicitHeight: 32
-                    implicitWidth: areaRow.implicitWidth + 20
+                    implicitWidth: regionRow.implicitWidth + 20
                     radius: Theme.squareRadius
-                    color: areaMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface
-                    border.color: areaMouse.containsMouse ? Theme.cyan : Theme.borderNormal
+                    color: regionMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface
+                    border.color: regionMouse.containsMouse ? Theme.cyan : Theme.borderNormal
                     border.width: 1
 
                     RowLayout {
-                        id: areaRow
+                        id: regionRow
                         anchors.centerIn: parent
                         spacing: 6
                         Text {
@@ -152,12 +138,12 @@ PanelWindow {
                     }
 
                     MouseArea {
-                        id: areaMouse
+                        id: regionMouse
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (root.service) root.service.capture("region", root.service.delaySeconds);
+                            if (root.service) root.service.captureRegion();
                         }
                     }
                 }
@@ -169,7 +155,7 @@ PanelWindow {
                     implicitWidth: winRow.implicitWidth + 20
                     radius: Theme.squareRadius
                     color: winMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface
-                    border.color: winMouse.containsMouse ? Theme.cyan : Theme.borderNormal
+                    border.color: winMouse.containsMouse ? Theme.purple : Theme.borderNormal
                     border.width: 1
 
                     RowLayout {
@@ -199,7 +185,7 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (root.service) root.service.capture("window", root.service.delaySeconds);
+                            if (root.service) root.service.captureWindow();
                         }
                     }
                 }
@@ -211,7 +197,7 @@ PanelWindow {
                     implicitWidth: screenRow.implicitWidth + 20
                     radius: Theme.squareRadius
                     color: screenMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface
-                    border.color: screenMouse.containsMouse ? Theme.cyan : Theme.borderNormal
+                    border.color: screenMouse.containsMouse ? Theme.green : Theme.borderNormal
                     border.width: 1
 
                     RowLayout {
@@ -241,7 +227,7 @@ PanelWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            if (root.service) root.service.capture("output", root.service.delaySeconds);
+                            if (root.service) root.service.captureOutput();
                         }
                     }
                 }
@@ -250,50 +236,8 @@ PanelWindow {
                     width: 1
                     height: 20
                     color: Theme.borderDim
-                    Layout.leftMargin: 4
-                    Layout.rightMargin: 4
-                }
-
-                // Timer Delay Pill
-                Rectangle {
-                    id: timerBtn
-                    implicitHeight: 32
-                    implicitWidth: timerRow.implicitWidth + 16
-                    radius: Theme.squareRadius
-                    color: timerMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface
-                    border.color: (root.service && root.service.delaySeconds > 0) ? Theme.yellow : Theme.borderNormal
-                    border.width: 1
-
-                    RowLayout {
-                        id: timerRow
-                        anchors.centerIn: parent
-                        spacing: 5
-                        Text {
-                            text: "󱫌"
-                            renderType: Theme.renderType
-                            font.family: Theme.fontIcon
-                            font.pixelSize: 13
-                            color: (root.service && root.service.delaySeconds > 0) ? Theme.yellow : Theme.textMuted
-                        }
-                        Text {
-                            text: (root.service && root.service.delaySeconds > 0) ? (root.service.delaySeconds + "s") : "Timer"
-                            renderType: Theme.renderType
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontCaption
-                            font.weight: Font.Medium
-                            color: (root.service && root.service.delaySeconds > 0) ? Theme.yellow : Theme.textSecondary
-                        }
-                    }
-
-                    MouseArea {
-                        id: timerMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            if (root.service) root.service.cycleDelay();
-                        }
-                    }
+                    Layout.leftMargin: 2
+                    Layout.rightMargin: 2
                 }
 
                 // Close Button

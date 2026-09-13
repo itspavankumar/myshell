@@ -1,25 +1,27 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# screenshot.sh - Independent Wayland Screenshot & Markup Handler
-# Replaces hyprshot with instant capture + markup annotation support (satty)
+# screenshot.sh - Robust Wayland Screenshot & Annotation Handler
+# Supports direct instant capture and interactive Satty annotation
 # ==============================================================================
 
 set -euo pipefail
 
 MODE="${1:-region}"
-DELAY="${2:-0}"
 
 SHOT_DIR="${XDG_PICTURES_DIR:-$HOME/Pictures}/Screenshots"
 mkdir -p "$SHOT_DIR"
 FILENAME="Screenshot_$(date +'%Y-%m-%d_%H-%M-%S').png"
 TARGET_FILE="$SHOT_DIR/$FILENAME"
+TEMP_FILE="/tmp/snip_$$.png"
 
-# Optional delay (in seconds)
-if [ "$DELAY" -gt 0 ]; then
-    sleep "$DELAY"
-fi
+cleanup() {
+    rm -f "$TEMP_FILE"
+}
+trap cleanup EXIT
 
-# Direct instant fullscreen capture (no satty annotation)
+# ------------------------------------------------------------------------------
+# Mode: Direct instant fullscreen capture (no satty editor)
+# ------------------------------------------------------------------------------
 if [ "$MODE" = "direct" ] || [ "$MODE" = "screen-direct" ] || [ "$MODE" = "fullscreen-direct" ]; then
     if ! command -v grim &>/dev/null; then
         notify-send -a "Screenshot" -u critical "Screenshot Error" "'grim' is required for capturing screenshots."
@@ -33,6 +35,9 @@ if [ "$MODE" = "direct" ] || [ "$MODE" = "screen-direct" ] || [ "$MODE" = "fulls
     exit 0
 fi
 
+# ------------------------------------------------------------------------------
+# Geometry Resolution
+# ------------------------------------------------------------------------------
 GEOM=""
 
 case "$MODE" in
@@ -64,7 +69,6 @@ case "$MODE" in
         fi
         ;;
     output|screen|fullscreen)
-        # Fullscreen / active monitor
         GEOM=""
         ;;
     *)
@@ -79,38 +83,41 @@ if ! command -v grim &>/dev/null; then
     exit 1
 fi
 
-# Markup / Annotation flow
+# 1. Snap image directly to TEMP_FILE first
+if [ -n "$GEOM" ]; then
+    grim -g "$GEOM" "$TEMP_FILE"
+else
+    grim "$TEMP_FILE"
+fi
+
+if [ ! -f "$TEMP_FILE" ] || [ ! -s "$TEMP_FILE" ]; then
+    exit 0
+fi
+
+# 2. Annotation & Markup Flow via satty
 if command -v satty &>/dev/null; then
-    # Full Satty markup annotation editor
-    if [ -n "$GEOM" ]; then
-        grim -g "$GEOM" - | satty --filename - --output-filename "$TARGET_FILE" --early-exit --save-after-copy --copy-command "wl-copy" --disable-notifications
-    else
-        grim - | satty --filename - --output-filename "$TARGET_FILE" --early-exit --save-after-copy --copy-command "wl-copy" --disable-notifications
-    fi
-    if [ -f "$TARGET_FILE" ]; then
+    # Launch satty with the captured file
+    satty -f "$TEMP_FILE" \
+          --output-filename "$TARGET_FILE" \
+          --early-exit \
+          --save-after-copy \
+          --copy-command "wl-copy" \
+          --disable-notifications
+
+    # Only send notification if user copied or saved to TARGET_FILE
+    if [ -f "$TARGET_FILE" ] && [ -s "$TARGET_FILE" ]; then
+        wl-copy < "$TARGET_FILE" 2>/dev/null || true
         notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved" "Image copied to clipboard & saved to ~/Pictures/Screenshots/$FILENAME"
     fi
 elif command -v swappy &>/dev/null; then
-    # Swappy markup editor fallback
-    if [ -n "$GEOM" ]; then
-        grim -g "$GEOM" - | swappy -f - -o "$TARGET_FILE"
-    else
-        grim - | swappy -f - -o "$TARGET_FILE"
-    fi
-    if [ -f "$TARGET_FILE" ]; then
+    swappy -f "$TEMP_FILE" -o "$TARGET_FILE"
+    if [ -f "$TARGET_FILE" ] && [ -s "$TARGET_FILE" ]; then
         wl-copy < "$TARGET_FILE" 2>/dev/null || true
         notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "Saved to ~/Pictures/Screenshots/$FILENAME"
     fi
 else
-    # Direct capture fallback if markup editor is not yet installed
-    if [ -n "$GEOM" ]; then
-        grim -g "$GEOM" "$TARGET_FILE"
-    else
-        grim "$TARGET_FILE"
-    fi
-    if [ -f "$TARGET_FILE" ]; then
-        wl-copy < "$TARGET_FILE" 2>/dev/null || true
-        notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "Saved to ~/Pictures/Screenshots/$FILENAME\n\nInstall 'satty' for instant markup: sudo pacman -S satty"
-    fi
+    # Direct fallback if markup editor is not installed
+    cp "$TEMP_FILE" "$TARGET_FILE"
+    wl-copy < "$TARGET_FILE" 2>/dev/null || true
+    notify-send -a "Screenshot" -i "$TARGET_FILE" "Screenshot Saved & Copied" "Saved to ~/Pictures/Screenshots/$FILENAME\n\nInstall 'satty' for instant markup: sudo pacman -S satty"
 fi
-

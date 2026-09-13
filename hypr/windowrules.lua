@@ -59,7 +59,7 @@ hl.window_rule({
 -- Satty Screenshot Annotation Tool (Floating & Centered)
 hl.window_rule({
     name = "satty-floating",
-    match = { class = "^(com\\.gabm\\.satty)$" },
+    match = { class = "^(com\\.gabm\\.satty|satty)$" },
     float = true,
     center = true,
     size = { 1200, 750 },

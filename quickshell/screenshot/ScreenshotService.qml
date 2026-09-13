@@ -8,13 +8,11 @@ Scope {
     id: root
 
     property bool isHudOpen: false
-    property int delaySeconds: 0 // 0, 3, 5
-
     property string pendingMode: "region"
 
     Timer {
         id: delayTimer
-        interval: Math.max(100, root.delaySeconds * 1000)
+        interval: 180
         repeat: false
         onTriggered: {
             runCapture(root.pendingMode);
@@ -28,43 +26,35 @@ Scope {
     function runCapture(mode) {
         let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/screenshot.sh";
         captureProc.running = false;
-        captureProc.command = [scriptPath, mode, "0"];
+        captureProc.command = [scriptPath, mode];
         captureProc.running = true;
     }
 
-    function capture(mode, delay) {
+    function capture(mode) {
         closeHud();
-        let d = (typeof delay === "number") ? delay : root.delaySeconds;
         root.pendingMode = mode || "region";
-
-        if (d > 0) {
-            delayTimer.interval = d * 1000;
-            delayTimer.start();
-        } else {
-            // Slight 120ms yield to ensure HUD window is completely unmapped before grim snaps the screen
-            delayTimer.interval = 120;
-            delayTimer.start();
-        }
+        // 180ms delay gives the Wayland compositor time to cleanly unmap the overlay surface
+        delayTimer.start();
     }
 
     function captureRegion() {
-        capture("region", 0);
+        capture("region");
     }
 
     function captureWindow() {
-        capture("window", 0);
+        capture("window");
+    }
+
+    function captureOutput() {
+        capture("output");
     }
 
     function captureDirect() {
         closeHud();
         let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/screenshot.sh";
         captureProc.running = false;
-        captureProc.command = [scriptPath, "direct", "0"];
+        captureProc.command = [scriptPath, "direct"];
         captureProc.running = true;
-    }
-
-    function captureOutput() {
-        capture("output", 0);
     }
 
     function openHud() {
@@ -84,12 +74,6 @@ Scope {
         }
     }
 
-    function cycleDelay() {
-        if (delaySeconds === 0) delaySeconds = 3;
-        else if (delaySeconds === 3) delaySeconds = 5;
-        else delaySeconds = 0;
-    }
-
     // ==========================================
     // IPC HANDLER & HYPRLAND SHORTCUTS
     // ==========================================
@@ -101,7 +85,7 @@ Scope {
         }
 
         function capture(mode: string): void {
-            root.capture(mode, 0);
+            root.capture(mode);
         }
 
         function region(): void {
