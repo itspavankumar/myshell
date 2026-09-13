@@ -20,14 +20,11 @@ hl.bind(mainMod .. " + M", hl.dsp.exit())
 hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ action = "toggle" }))
 hl.bind(mainMod .. " + L", hl.dsp.global("quickshell:lock"))
--- Screenshots & Clipboard
-local function screenshot(mode)
-    return hl.dsp.exec_cmd("hyprshot -m " .. mode .. " -f \"Screenshot_$(date +'%Y-%m-%d_%H-%M-%S').png\"")
-end
-
-hl.bind("Print", screenshot("output"))
-hl.bind(mainMod .. " + Print", screenshot("window"))
-hl.bind(mainMod .. " + SHIFT + Print", screenshot("region"))
+-- Screenshots (Quickshell independent instance with satty markup)
+hl.bind("Print", hl.dsp.global("quickshell:screenshot_output"))
+hl.bind(mainMod .. " + Print", hl.dsp.global("quickshell:screenshot_window"))
+hl.bind(mainMod .. " + SHIFT + Print", hl.dsp.global("quickshell:screenshot_region"))
+hl.bind(mainMod .. " + SHIFT + S", hl.dsp.global("quickshell:screenshot_toggle"))
 hl.bind(mainMod .. " + V", hl.dsp.global("quickshell:clipboard_toggle"))
 -- Focus 
 hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "l" }))

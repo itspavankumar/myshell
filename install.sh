@@ -56,7 +56,9 @@ PACMAN_PACKAGES=(
     brightnessctl
     wl-clipboard
     cliphist
-    hyprshot
+    grim
+    slurp
+    satty
     libnotify
     upower
     xdg-user-dirs
@@ -322,18 +324,21 @@ setup_symlinks() {
     link_component "quickshell"
     link_component "hypr"
     link_component "ghostty"
+    link_component "satty"
 
     log_info "Ensuring helper scripts are executable..."
     chmod +x "$REPO_DIR/quickshell/start.sh"
     chmod +x "$REPO_DIR/quickshell/scripts/sync-apps.py"
     chmod +x "$REPO_DIR/quickshell/scripts/scan-wallpapers.sh"
+    chmod +x "$REPO_DIR/quickshell/scripts/screenshot.sh"
     log_success "Symlinks and permissions ready."
 }
 
 setup_user_directories() {
     log_step "Setting up user directories..."
     mkdir -p "$HOME/Pictures/Wallpapers"
-    log_info "Wallpaper directory ready at: $HOME/Pictures/Wallpapers"
+    mkdir -p "$HOME/Pictures/Screenshots"
+    log_info "Directories ready at: ~/Pictures/Wallpapers and ~/Pictures/Screenshots"
 }
 
 sync_themes() {

@@ -24,11 +24,14 @@ myshell/
 │   ├── clipboard.qml   # Searchable Wayland clipboard manager
 │   ├── lock.qml        # PAM-integrated lockscreen
 │   ├── osd.qml         # Audio, brightness & ASUS fan profile OSD
+│   ├── screenshot.qml  # Independent screenshot manager & floating HUD
 │   ├── themes.qml      # Visual theme selector & palette engine
 │   ├── wallpaper.qml   # Wallpaper carousel & random login switcher
 │   ├── popups/         # Control center, battery, network, bluetooth, clock
 │   ├── theme/zen/      # Zen browser custom CSS templates
-│   └── scripts/        # sync-apps.py universal theme synchronizer
+│   └── scripts/        # sync-apps.py, scan-wallpapers.sh, screenshot.sh
+├── satty/              # Satty screenshot annotation & markup configuration
+│   └── config.toml     # Custom font, brush tool, and wl-copy export
 ├── ghostty/            # GPU-accelerated terminal emulator configuration
 │   ├── config.ghostty  # Ghostty options
 │   └── theme.ghostty   # Dynamically synced terminal palette
@@ -101,7 +104,7 @@ sudo systemctl enable --now bluetooth.service
 ```bash
 sudo pacman -S --needed \
     quickshell ghostty awww brightnessctl \
-    wl-clipboard cliphist hyprshot libnotify upower xdg-user-dirs \
+    wl-clipboard cliphist grim slurp satty libnotify upower xdg-user-dirs \
     adw-gtk-theme ttf-jetbrains-mono-nerd noto-fonts-emoji otf-font-awesome \
     base-devel git curl jq python python-gobject
 ```
@@ -158,6 +161,10 @@ Hyprland
 | `Super + Return` | Open Ghostty terminal |
 | `Super + Space` | Spotlight Application Launcher |
 | `Super + V` | Wayland Clipboard History |
+| `Super + Shift + S` | Interactive Screenshot HUD (Region, Window, Output, Delay) |
+| `Print` | Capture Fullscreen & Open Satty Markup |
+| `Super + Print` | Capture Active Window & Open Satty Markup |
+| `Super + Shift + Print` | Select Region & Open Satty Markup |
 | `Super + L` | Lock Screen |
 | `Super + Q` | Close Active Window |
 | `Super + E` | Open File Manager (Nautilus) |
@@ -169,8 +176,13 @@ Use the Quickshell supervisor script for management:
 # Restart the entire shell
 ~/.config/quickshell/start.sh restart
 
-# Restart an individual component (bar, launcher, osd, clipboard, wallpaper, etc.)
-~/.config/quickshell/start.sh restart bar
+# Restart an individual component (bar, launcher, osd, clipboard, wallpaper, screenshot, etc.)
+~/.config/quickshell/start.sh restart screenshot
+
+# Trigger screenshot capture with Satty annotation directly via CLI
+~/.config/quickshell/start.sh screenshot region
+~/.config/quickshell/start.sh screenshot window
+~/.config/quickshell/start.sh screenshot output
 
 # Change theme live across all apps (quickshell, GTK, Ghostty, VSCodium, Zen)
 ~/.config/quickshell/start.sh theme tokyo-night
