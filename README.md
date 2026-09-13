@@ -38,29 +38,36 @@ myshell/
 
 ---
 
-## Quick Setup (Existing System)
+## One-Command Fresh Arch Linux Setup
 
-If you already have the packages installed:
+From a minimal Arch Linux installation (base system + networking), you can install the entire desktop with a single command:
 
 ```bash
 # 1. Clone repository
-git clone git@github.com:itspavankumar/myshell.git ~/Projects/myshell
+git clone https://github.com/itspavankumar/myshell.git ~/Projects/myshell
 cd ~/Projects/myshell
 
-# 2. Run the installer to create symlinks and sync themes
+# 2. Run the automated installer
 chmod +x install.sh
 ./install.sh
-
-# 3. Add wallpapers to your wallpaper directory
-mkdir -p ~/Pictures/Wallpapers
-# Copy any .jpg / .png / .webp / .gif images into ~/Pictures/Wallpapers
 ```
+
+The script automatically:
+1. Installs all required official packages (`hyprland`, `quickshell`, `ghostty`, `pipewire`, `polkit-gnome`, etc.).
+2. Auto-detects ASUS hardware and installs `asusctl` + enables `asusd.service`.
+3. Bootstraps `yay` (via `yay-bin`) if no AUR helper is present.
+4. Installs required AUR packages (`apple-fonts` for SF Pro, `apple_cursor`, `whitesur-icon-theme`, `zen-browser-bin`).
+5. Enables and starts system services (`NetworkManager`, `bluetooth`, `asusd`).
+6. Configures GTK3/GTK4 dark mode (`adw-gtk3-dark`), `macOS-White` cursor, and Apple SF Pro typography.
+7. Symlinks `hypr`, `quickshell`, and `ghostty` into `~/.config/`.
+8. Creates `~/Pictures/Wallpapers` ready for your wallpaper collection.
+9. Compiles and synchronizes live palettes across GTK, Ghostty, VSCodium, and Zen Browser.
 
 ---
 
-## Fresh Arch Linux Minimal Install Guide
+## Manual Step-by-Step Guide (Reference)
 
-If you are setting up this desktop from a minimal Arch Linux installation:
+If you prefer to inspect or run each step manually rather than using `./install.sh`:
 
 ### 1. Audio, Bluetooth, Network & Drivers
 ```bash
@@ -177,3 +184,4 @@ Use the Quickshell supervisor script for management:
 
 ## License
 MIT
+

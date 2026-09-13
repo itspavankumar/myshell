@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# myshell - Setup and Installation Script
-# Symlinks desktop configurations (Hyprland, Quickshell, Ghostty) into ~/.config
+# myshell - Automated System Setup & Installer
+# Transforms a minimal Arch Linux installation into a fully configured desktop:
+# Hyprland (Lua) + Quickshell + Ghostty + Zen Browser + Unified Theming
 # ==============================================================================
 
 set -euo pipefail
@@ -9,18 +10,220 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 
-# Colors for terminal output
+# Styling
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 BLUE="\033[0;34m"
 YELLOW="\033[1;33m"
 RED="\033[0;31m"
+CYAN="\033[0;36m"
 RESET="\033[0m"
 
 log_info()    { echo -e "${BLUE}${BOLD}[myshell]${RESET} $*"; }
 log_success() { echo -e "${GREEN}${BOLD}[myshell]${RESET} $*"; }
 log_warn()    { echo -e "${YELLOW}${BOLD}[myshell]${RESET} $*"; }
 log_error()   { echo -e "${RED}${BOLD}[myshell]${RESET} $*"; }
+log_step()    { echo -e "\n${CYAN}${BOLD}==> $*${RESET}"; }
+
+# Core Official Arch Packages (pacman)
+PACMAN_PACKAGES=(
+    # Audio & Media
+    pipewire
+    pipewire-pulse
+    pipewire-alsa
+    wireplumber
+    playerctl
+    libpulse
+
+    # Networking & Bluetooth
+    networkmanager
+    bluez
+    bluez-utils
+
+    # Compositor & Wayland Ecosystem
+    hyprland
+    xdg-desktop-portal-hyprland
+    xdg-desktop-portal-gtk
+    qt5-wayland
+    qt6-wayland
+    polkit-gnome
+
+    # Shell, Terminal & Utilities
+    quickshell
+    ghostty
+    awww
+    brightnessctl
+    wl-clipboard
+    cliphist
+    hyprshot
+    nautilus
+    libnotify
+
+    # Theming & Fonts
+    adw-gtk-theme
+    ttf-jetbrains-mono-nerd
+    noto-fonts-emoji
+    otf-font-awesome
+
+    # Build & Script Dependencies
+    base-devel
+    git
+    curl
+    jq
+    python
+    python-gobject
+)
+
+# AUR Packages
+AUR_PACKAGES=(
+    apple-fonts          # SF Pro / New York typography
+    apple_cursor         # macOS-White cursor theme
+    whitesur-icon-theme  # WhiteSur icon family for live palette matching
+    zen-browser-bin      # Zen Browser with quickshell CSS integration
+)
+
+check_environment() {
+    if [ ! -f /etc/arch-release ]; then
+        log_error "This script is designed for Arch Linux. Unsupported distribution."
+        exit 1
+    fi
+
+    if [ "$EUID" -eq 0 ]; then
+        log_error "Please do not run install.sh as root or with sudo directly."
+        log_error "The script will prompt for sudo when necessary."
+        exit 1
+    fi
+
+    if ! command -v sudo &>/dev/null; then
+        log_error "'sudo' is required but not installed. Please install sudo and grant your user permissions."
+        exit 1
+    fi
+}
+
+install_pacman_packages() {
+    log_step "Installing official Arch packages via pacman..."
+
+    # Check for ASUS hardware (ROG, TUF, Zephyrus)
+    if [ -d "/sys/devices/platform/asus-nb-wmi" ] || grep -qi "asus" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        log_info "ASUS hardware detected. Adding asusctl to package list."
+        PACMAN_PACKAGES+=("asusctl")
+    fi
+
+    sudo pacman -S --needed --noconfirm "${PACMAN_PACKAGES[@]}"
+    log_success "Official packages installed."
+}
+
+bootstrap_aur_helper() {
+    log_step "Checking AUR helper..."
+    if command -v yay &>/dev/null; then
+        AUR_HELPER="yay"
+        log_info "Using existing AUR helper: yay"
+        return 0
+    fi
+
+    if command -v paru &>/dev/null; then
+        AUR_HELPER="paru"
+        log_info "Using existing AUR helper: paru"
+        return 0
+    fi
+
+    log_info "No AUR helper detected. Bootstrapping yay-bin..."
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    git clone --depth=1 https://aur.archlinux.org/yay-bin.git "$tmp_dir/yay-bin"
+    (
+        cd "$tmp_dir/yay-bin"
+        makepkg -si --noconfirm
+    )
+    rm -rf "$tmp_dir"
+    AUR_HELPER="yay"
+    log_success "yay-bin installed successfully."
+}
+
+install_aur_packages() {
+    log_step "Installing AUR packages (${AUR_PACKAGES[*]})..."
+    "$AUR_HELPER" -S --needed --noconfirm "${AUR_PACKAGES[@]}"
+    log_success "AUR packages installed."
+}
+
+configure_services() {
+    log_step "Configuring essential systemd services..."
+    local services=("NetworkManager.service" "bluetooth.service")
+
+    if [ -d "/sys/devices/platform/asus-nb-wmi" ] || grep -qi "asus" /sys/class/dmi/id/sys_vendor 2>/dev/null; then
+        services+=("asusd.service")
+    fi
+
+    for svc in "${services[@]}"; do
+        if systemctl list-unit-files "$svc" &>/dev/null; then
+            log_info "Enabling and starting $svc..."
+            sudo systemctl enable --now "$svc" || log_warn "Could not enable $svc"
+        fi
+    done
+    log_success "System services configured."
+}
+
+configure_gtk_and_desktop() {
+    log_step "Configuring GTK, cursor, fonts, and dark mode..."
+
+    local gtk3_dir="$CONFIG_DIR/gtk-3.0"
+    local gtk4_dir="$CONFIG_DIR/gtk-4.0"
+    local icons_default="$HOME/.icons/default"
+
+    mkdir -p "$gtk3_dir" "$gtk4_dir" "$icons_default"
+
+    # GTK 3.0 configuration
+    cat > "$gtk3_dir/settings.ini" << 'EOF'
+[Settings]
+gtk-theme-name=adw-gtk3-dark
+gtk-icon-theme-name=WhiteSur-dark
+gtk-font-name=SF Pro Bold 11 @opsz=17,wght=700
+gtk-cursor-theme-name=macOS-White
+gtk-cursor-theme-size=16
+gtk-toolbar-style=GTK_TOOLBAR_ICONS
+gtk-toolbar-icon-size=GTK_ICON_SIZE_LARGE_TOOLBAR
+gtk-button-images=0
+gtk-menu-images=0
+gtk-enable-event-sounds=1
+gtk-enable-input-feedback-sounds=0
+gtk-xft-antialias=1
+gtk-xft-hinting=1
+gtk-xft-hintstyle=hintslight
+gtk-xft-rgba=rgb
+gtk-application-prefer-dark-theme=1
+EOF
+
+    # GTK 4.0 configuration
+    cat > "$gtk4_dir/settings.ini" << 'EOF'
+[Settings]
+gtk-theme-name=adw-gtk3-dark
+gtk-icon-theme-name=WhiteSur-dark
+gtk-font-name=SF Pro Bold 11 @opsz=17,wght=700
+gtk-cursor-theme-name=macOS-White
+gtk-cursor-theme-size=16
+gtk-application-prefer-dark-theme=1
+EOF
+
+    # X11 / XWayland cursor default fallback
+    cat > "$icons_default/index.theme" << 'EOF'
+[Icon Theme]
+Inherits=macOS-White
+EOF
+
+    # GSettings (if schemas are present)
+    if command -v gsettings &>/dev/null; then
+        gsettings set org.gnome.desktop.interface cursor-theme 'macOS-White' 2>/dev/null || true
+        gsettings set org.gnome.desktop.interface cursor-size 16 2>/dev/null || true
+        gsettings set org.gnome.desktop.interface icon-theme 'WhiteSur-dark' 2>/dev/null || true
+        gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
+        gsettings set org.gnome.desktop.interface gtk-theme 'adw-gtk3-dark' 2>/dev/null || true
+        gsettings set org.gnome.desktop.interface font-name 'SF Pro Bold 11 @opsz=17,wght=700' 2>/dev/null || true
+        gsettings set org.gnome.desktop.interface document-font-name 'SF Pro weight=860 12 @opsz=17,wght=860' 2>/dev/null || true
+        gsettings set org.gnome.desktop.interface monospace-font-name 'JetBrainsMono Nerd Font Bold 11' 2>/dev/null || true
+    fi
+
+    log_success "GTK, cursor, fonts, and dark mode configured."
+}
 
 link_component() {
     local name="$1"
@@ -54,86 +257,115 @@ link_component() {
     log_success "Symlinked $dest -> $src"
 }
 
-check_dependencies() {
-    log_info "Verifying core dependencies..."
-
-    local pacman_pkgs=(
-        "hyprland"
-        "quickshell"
-        "awww"
-        "ghostty"
-        "brightnessctl"
-        "wl-clipboard"
-        "cliphist"
-        "playerctl"
-        "wireplumber"
-        "pipewire"
-        "networkmanager"
-        "bluez"
-        "bluez-utils"
-        "polkit-gnome"
-        "asusctl"
-    )
-
-    local aur_pkgs=(
-        "apple-fonts"
-        "zen-browser-bin"
-    )
-
-    local missing=()
-    for cmd in hyprland quickshell awww ghostty brightnessctl wl-copy cliphist playerctl pactl nmcli bluetoothctl asusctl; do
-        if ! command -v "$cmd" &>/dev/null; then
-            missing+=("$cmd")
-        fi
-    done
-
-    if [ ${#missing[@]} -eq 0 ]; then
-        log_success "All essential tools are installed and available in PATH!"
-    else
-        log_warn "The following commands were not found in PATH: ${missing[*]}"
-        echo ""
-        echo "To install missing packages on Arch Linux, run:"
-        echo -e "  ${BOLD}sudo pacman -S --needed ${pacman_pkgs[*]}${RESET}"
-        echo -e "  ${BOLD}yay -S --needed ${aur_pkgs[*]}${RESET}"
-        echo ""
-    fi
-}
-
-main() {
-    echo -e "${BOLD}====================================================${RESET}"
-    echo -e "${BOLD}        myshell - Desktop Configuration Setup       ${RESET}"
-    echo -e "${BOLD}====================================================${RESET}"
-
-    # 1. Symlink configurations
-    log_info "Creating symlinks in $CONFIG_DIR..."
+setup_symlinks() {
+    log_step "Linking configurations into $CONFIG_DIR..."
     link_component "quickshell"
     link_component "hypr"
     link_component "ghostty"
 
-    # 2. Permissions
     log_info "Ensuring helper scripts are executable..."
     chmod +x "$REPO_DIR/quickshell/start.sh"
     chmod +x "$REPO_DIR/quickshell/scripts/sync-apps.py"
-    log_success "Script permissions verified."
+    log_success "Symlinks and permissions ready."
+}
 
-    # 3. Wallpaper directory
+setup_user_directories() {
+    log_step "Setting up user directories..."
     mkdir -p "$HOME/Pictures/Wallpapers"
     log_info "Wallpaper directory ready at: $HOME/Pictures/Wallpapers"
+}
 
-    # 4. Zen Browser & App theme sync
+sync_themes() {
+    log_step "Compiling and synchronizing themes..."
     if command -v python3 &>/dev/null; then
-        log_info "Synchronizing application palettes and browser styles..."
-        python3 "$REPO_DIR/quickshell/scripts/sync-apps.py" || log_warn "sync-apps encountered a non-fatal warning."
+        python3 "$REPO_DIR/quickshell/scripts/sync-apps.py" || log_warn "sync-apps encountered a non-fatal notice."
+    fi
+}
+
+show_help() {
+    cat << EOF
+Usage: ./install.sh [OPTIONS]
+
+Options:
+  -y, --yes, --all       Run full automated installation without prompting (packages, AUR, configs, theming)
+  --symlinks-only        Only link configurations into ~/.config without installing system packages
+  -h, --help             Show this help message
+EOF
+}
+
+main() {
+    echo -e "${BOLD}================================================================${RESET}"
+    echo -e "${BOLD}       myshell - Complete Desktop System Installer              ${RESET}"
+    echo -e "${BOLD}================================================================${RESET}"
+
+    check_environment
+
+    local mode="ask"
+    for arg in "$@"; do
+        case "$arg" in
+            -y|--yes|--all)
+                mode="full"
+                ;;
+            --symlinks-only)
+                mode="symlinks"
+                ;;
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            *)
+                log_error "Unknown argument: $arg"
+                show_help
+                exit 1
+                ;;
+        esac
+    done
+
+    if [ "$mode" = "ask" ]; then
+        echo ""
+        echo "This script can perform a complete end-to-end installation:"
+        echo "  1. Install all official Arch Linux packages (Hyprland, Quickshell, Ghostty, Pipewire, etc.)"
+        echo "  2. Bootstrap yay (if needed) & install AUR packages (apple-fonts, apple_cursor, whitesur, zen-browser)"
+        echo "  3. Enable system services (NetworkManager, bluetooth, asusd if ASUS)"
+        echo "  4. Configure GTK4/3 dark theme, macOS cursor, and SF Pro typography"
+        echo "  5. Symlink configs into ~/.config (hypr, quickshell, ghostty)"
+        echo "  6. Synchronize initial application themes"
+        echo ""
+        read -rp "Perform full installation? [Y/n]: " choice
+        case "${choice:-Y}" in
+            [yY][eE][sS]|[yY]|"")
+                mode="full"
+                ;;
+            *)
+                log_info "Skipping package installation. Setting up symlinks and theme configs only."
+                mode="symlinks"
+                ;;
+        esac
     fi
 
-    # 5. Dependency check
-    check_dependencies
+    if [ "$mode" = "full" ]; then
+        install_pacman_packages
+        bootstrap_aur_helper
+        install_aur_packages
+        configure_services
+    fi
 
-    echo -e "${GREEN}${BOLD}Setup completed successfully!${RESET}"
+    configure_gtk_and_desktop
+    setup_symlinks
+    setup_user_directories
+    sync_themes
+
     echo ""
-    echo "To start or restart the Quickshell environment:"
-    echo "  $REPO_DIR/quickshell/start.sh restart"
+    echo -e "${GREEN}${BOLD}================================================================${RESET}"
+    echo -e "${GREEN}${BOLD}         Installation & Configuration Completed Successfully!   ${RESET}"
+    echo -e "${GREEN}${BOLD}================================================================${RESET}"
     echo ""
+    echo -e "Next steps:"
+    echo -e "  1. Add any wallpapers to ${BOLD}~/Pictures/Wallpapers${RESET}"
+    echo -e "  2. To start your desktop session, run:"
+    echo -e "     ${CYAN}${BOLD}Hyprland${RESET} (or ${CYAN}${BOLD}start-hyprland${RESET})"
+    echo ""
+    echo -e "Enjoy your new desktop environment!"
 }
 
 main "$@"
