@@ -142,6 +142,37 @@ PopupWindow {
     }
 
     // ==========================================
+    // CAFFEINATE (KEEP-AWAKE) STATE & CONTROLLER
+    // ==========================================
+    property bool caffeinated: false
+
+    FileView {
+        id: caffWatcher
+        path: (Quickshell.env("HOME") || "") + "/.config/quickshell/state/caffeinated.txt"
+        watchChanges: true
+        onFileChanged: {
+            let txt = caffWatcher.text().trim();
+            root.caffeinated = (txt === "1" || txt === "true");
+        }
+        onLoaded: {
+            let txt = caffWatcher.text().trim();
+            root.caffeinated = (txt === "1" || txt === "true");
+        }
+    }
+
+    Process {
+        id: caffProc
+    }
+
+    function toggleCaffeinate() {
+        root.caffeinated = !root.caffeinated;
+        let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/caffeinate.sh";
+        caffProc.command = ["bash", scriptPath, root.caffeinated ? "on" : "off"];
+        caffProc.running = false;
+        caffProc.running = true;
+    }
+
+    // ==========================================
     // ASUSCTL PROCESSES & STATE
     // ==========================================
     property string activeAsusProfile: "Performance"
@@ -324,11 +355,11 @@ PopupWindow {
             }
 
             // ==========================================
-            // BATTERY LEVEL METER & CHARGE LIMIT MARKER
+            // BATTERY LEVEL METER & INTEGRATED CHARGE THRESHOLD
             // ==========================================
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: 70
+                implicitHeight: 84
                 color: Theme.bgSurface
                 border.color: Theme.borderNormal
                 border.width: Theme.borderWidth
@@ -341,6 +372,8 @@ PopupWindow {
 
                     RowLayout {
                         Layout.fillWidth: true
+                        spacing: 8
+
                         Text {
                             text: root.batteryPercent + "%"
                             renderType: Theme.renderType
@@ -349,6 +382,40 @@ PopupWindow {
                             font.weight: Font.Bold
                             font.letterSpacing: 0.8
                             color: root.stateColor
+                        }
+
+                        // Integrated Charge Limit Badge
+                        Rectangle {
+                            visible: root.chargeLimit > 0 && root.chargeLimit < 100
+                            implicitWidth: limitBadgeRow.implicitWidth + 10
+                            implicitHeight: 20
+                            color: Theme.bgBase
+                            border.color: Theme.cyan
+                            border.width: Theme.borderWidth
+                            radius: Theme.squareRadius
+
+                            RowLayout {
+                                id: limitBadgeRow
+                                anchors.centerIn: parent
+                                spacing: 4
+
+                                Text {
+                                    text: "󰚥"
+                                    renderType: Theme.renderType
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: 10
+                                    color: Theme.cyan
+                                }
+
+                                Text {
+                                    text: root.chargeLimit + "% Limit"
+                                    renderType: Theme.renderType
+                                    font.family: Theme.fontFamily
+                                    font.pixelSize: Theme.fontCaption
+                                    font.weight: Font.Bold
+                                    color: Theme.cyan
+                                }
+                            }
                         }
 
                         Item { Layout.fillWidth: true }
@@ -360,7 +427,7 @@ PopupWindow {
                                 }
                                 if (root.isPluggedIn) {
                                     if (root.isFull || root.batteryPercent >= (root.chargeLimit > 0 ? root.chargeLimit - 1 : 98)) {
-                                        return "0.0 W • AC Bypass (Limit Active)";
+                                        return "0.0 W • AC Bypass";
                                     }
                                     return "0.0 W • On AC Power";
                                 }
@@ -407,74 +474,136 @@ PopupWindow {
                             z: 2
                         }
                     }
+
+                    // Subhead: Threshold details & hardware bypass state
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        Text {
+                            text: root.chargeLimit > 0 && root.chargeLimit < 100
+                                  ? ("Threshold set at " + root.chargeLimit + "% (hardware protected)")
+                                  : "Standard charging (no threshold set)"
+                            renderType: Theme.renderType
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            color: Theme.textMuted
+                        }
+
+                        Item { Layout.fillWidth: true }
+
+                        Text {
+                            visible: root.isPluggedIn && (root.isFull || root.batteryPercent >= (root.chargeLimit > 0 ? root.chargeLimit - 1 : 98))
+                            text: "Battery Bypassed"
+                            renderType: Theme.renderType
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            color: Theme.green
+                        }
+                    }
                 }
             }
 
             // ==========================================
-            // CHARGE LIMIT STATUS (READ-ONLY)
+            // CAFFEINATE (KEEP-AWAKE) TOGGLE CARD
             // ==========================================
             Rectangle {
+                id: caffeinateCard
                 Layout.fillWidth: true
-                implicitHeight: 42
-                color: Theme.bgSurface
-                border.color: Theme.borderDim
+                implicitHeight: 46
+                color: root.caffeinated ? Theme.bgSurfaceActive : (caffMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface)
+                border.color: root.caffeinated ? Theme.yellow : (caffMouse.containsMouse ? Theme.borderBright : Theme.borderNormal)
                 border.width: Theme.borderWidth
                 radius: Theme.squareRadius
+
+                Behavior on color { ColorAnimation { duration: 150 } }
+                Behavior on border.color { ColorAnimation { duration: 150 } }
 
                 RowLayout {
                     anchors.fill: parent
                     anchors.leftMargin: 10
                     anchors.rightMargin: 10
-                    spacing: 8
+                    spacing: 10
 
-                    Text {
-                        text: "󰚥"
-                        renderType: Theme.renderType
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 13
-                        color: Theme.cyan
+                    // Coffee Cup Icon
+                    Rectangle {
+                        width: 28
+                        height: 28
+                        color: root.caffeinated ? Qt.rgba(Theme.yellow.r, Theme.yellow.g, Theme.yellow.b, 0.15) : Theme.bgBase
+                        border.color: root.caffeinated ? Theme.yellow : Theme.borderDim
+                        border.width: Theme.borderWidth
+                        radius: Theme.squareRadius
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: root.caffeinated ? "󰅶" : "󰅵"
+                            renderType: Theme.renderType
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 14
+                            color: root.caffeinated ? Theme.yellow : Theme.textMuted
+                        }
                     }
 
+                    // Title & Description
                     ColumnLayout {
                         Layout.fillWidth: true
                         spacing: 1
 
                         Text {
-                            text: "CHARGE LIMIT"
+                            text: "CAFFEINATE"
                             renderType: Theme.renderType
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontCaption
                             font.weight: Font.Bold
-                            color: Theme.textPrimary
+                            font.letterSpacing: Theme.trackingTight
+                            color: root.caffeinated ? Theme.yellow : Theme.textPrimary
                         }
 
                         Text {
-                            text: root.chargeLimit > 0 ? (root.chargeLimit + "% threshold active") : "No limit active"
+                            text: root.caffeinated ? "Inhibiting auto-lock & sleep" : "Auto-lock & sleep active (5m/10m)"
                             renderType: Theme.renderType
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontCaption
-                            color: Theme.textMuted
+                            color: root.caffeinated ? Theme.textSecondary : Theme.textMuted
                         }
                     }
 
+                    // Square Switch Toggle
                     Rectangle {
-                        implicitWidth: limitBadge.implicitWidth + 12
-                        implicitHeight: 20
-                        color: Theme.bgBase
-                        border.color: Theme.cyan
+                        width: 40
+                        height: 22
+                        color: root.caffeinated ? Theme.yellow : Theme.bgBase
+                        border.color: root.caffeinated ? Theme.yellow : Theme.borderDim
                         border.width: Theme.borderWidth
                         radius: Theme.squareRadius
 
-                        Text {
-                            id: limitBadge
-                            anchors.centerIn: parent
-                            text: root.chargeLimit > 0 ? (root.chargeLimit + "%") : "100%"
-                            renderType: Theme.renderType
-                            font.family: Theme.fontFamily
-                            font.pixelSize: Theme.fontCaption
-                            font.weight: Font.Bold
-                            color: Theme.cyan
+                        Behavior on color { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                        // Toggle knob
+                        Rectangle {
+                            width: 16
+                            height: 16
+                            y: 2
+                            x: root.caffeinated ? 21 : 3
+                            color: root.caffeinated ? Theme.bgBase : Theme.textMuted
+                            radius: Theme.squareRadius
+
+                            Behavior on x {
+                                NumberAnimation { duration: 150; easing.type: Easing.OutCubic }
+                            }
+                            Behavior on color { ColorAnimation { duration: 150 } }
                         }
+                    }
+                }
+
+                MouseArea {
+                    id: caffMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        root.toggleCaffeinate();
                     }
                 }
             }

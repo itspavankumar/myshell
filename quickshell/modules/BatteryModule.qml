@@ -77,6 +77,15 @@ Rectangle {
         spacing: 6
 
         Text {
+            visible: popup.caffeinated
+            text: "󰅶"
+            font.family: Theme.fontFamily
+            font.pixelSize: 11
+            color: Theme.yellow
+            renderType: Text.NativeRendering
+        }
+
+        Text {
             text: root.batteryIcon
             font.family: Theme.fontFamily
             font.pixelSize: 13

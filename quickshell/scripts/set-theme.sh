@@ -33,3 +33,4 @@ wait
 
 # 4. Asynchronously sync external apps (GTK, Ghostty, VSCodium, Zen Browser, icons)
 python3 "$CONFIG_DIR/scripts/sync-apps.py" "$THEME_NAME" >/dev/null 2>&1 &
+

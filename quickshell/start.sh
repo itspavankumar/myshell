@@ -27,6 +27,7 @@ start_all() {
 stop_all() {
     echo "Stopping all Quickshell instances..."
     pkill -x quickshell 2>/dev/null || true
+    pkill -f "systemd-inhibit.*Quickshell Caffeinate" 2>/dev/null || true
     echo "All instances stopped."
 }
 

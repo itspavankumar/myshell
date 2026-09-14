@@ -34,10 +34,25 @@ Scope {
         }
     }
 
-    // Idle configuration (in seconds)
+    // Idle & Caffeinate configuration
     property bool idleEnabled: true
+    property bool caffeinated: false
     property int idleLockTimeout: 300   // 5 minutes
     property int idleSleepTimeout: 600  // 10 minutes
+
+    FileView {
+        id: caffWatcher
+        path: (Quickshell.env("HOME") || "") + "/.config/quickshell/state/caffeinated.txt"
+        watchChanges: true
+        onFileChanged: {
+            let txt = caffWatcher.text().trim();
+            root.caffeinated = (txt === "1" || txt === "true");
+        }
+        onLoaded: {
+            let txt = caffWatcher.text().trim();
+            root.caffeinated = (txt === "1" || txt === "true");
+        }
+    }
 
     signal failed()
     signal lockRequested()
@@ -174,12 +189,12 @@ Scope {
     // 1. Idle Lock Monitor (e.g. 5 minutes)
     IdleMonitor {
         id: idleLockMonitor
-        enabled: root.idleEnabled && !root.hasActiveMedia
+        enabled: root.idleEnabled && !root.caffeinated && !root.hasActiveMedia
         timeout: root.idleLockTimeout
         respectInhibitors: true
 
         onIsIdleChanged: {
-            if (isIdle && !root.isLocked && root.idleEnabled && !root.hasActiveMedia) {
+            if (isIdle && !root.isLocked && root.idleEnabled && !root.caffeinated && !root.hasActiveMedia) {
                 root.lock();
             }
         }
@@ -188,12 +203,12 @@ Scope {
     // 2. Idle Display Sleep (DPMS) Monitor (e.g. 10 minutes)
     IdleMonitor {
         id: idleSleepMonitor
-        enabled: root.idleEnabled && !root.hasActiveMedia
+        enabled: root.idleEnabled && !root.caffeinated && !root.hasActiveMedia
         timeout: root.idleSleepTimeout
         respectInhibitors: true
 
         onIsIdleChanged: {
-            if (isIdle && root.idleEnabled && !root.hasActiveMedia) {
+            if (isIdle && root.idleEnabled && !root.caffeinated && !root.hasActiveMedia) {
                 root.runCmd(["hyprctl", "dispatch", "dpms", "off"]);
             } else if (!isIdle) {
                 root.runCmd(["hyprctl", "dispatch", "dpms", "on"]);
@@ -282,6 +297,18 @@ Scope {
 
         function isLocked(): bool {
             return root.isLocked;
+        }
+
+        function setCaffeinated(enabled: bool): void {
+            root.caffeinated = enabled;
+        }
+
+        function toggleCaffeinate(): void {
+            root.caffeinated = !root.caffeinated;
+        }
+
+        function isCaffeinated(): bool {
+            return root.caffeinated;
         }
     }
 
