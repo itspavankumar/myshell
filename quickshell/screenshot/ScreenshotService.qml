@@ -206,11 +206,12 @@ Scope {
     // --------------------------------------------------------------------------
     Process {
         id: fullscreenSnapProc
+        property string tempFile: ""
         property string targetFile: ""
         property bool openMarkup: true
         onExited: (exitCode) => {
-            if (exitCode === 0 && targetFile) {
-                root.onCaptureFinished(targetFile, openMarkup);
+            if (exitCode === 0 && tempFile) {
+                root.onCaptureFinished(tempFile, targetFile, openMarkup);
             }
         }
     }
@@ -221,13 +222,15 @@ Scope {
         repeat: false
         property bool pendingMarkup: true
         onTriggered: {
+            let tempFile = "/tmp/qs_fullscreen_raw_" + Date.now() + ".png";
             let targetFile = root.generateTargetPath();
+            fullscreenSnapProc.tempFile = tempFile;
             fullscreenSnapProc.targetFile = targetFile;
             fullscreenSnapProc.openMarkup = pendingMarkup;
             fullscreenSnapProc.command = [
                 "bash", "-c",
-                "mkdir -p \"$(dirname \"$1\")\" && grim \"$1\"",
-                "_", targetFile
+                "grim \"$1\"",
+                "_", tempFile
             ];
             fullscreenSnapProc.running = false;
             fullscreenSnapProc.running = true;
@@ -293,19 +296,39 @@ Scope {
         id: postCaptureProc
     }
 
-    function onCaptureFinished(targetFile, openMarkup) {
+    function onCaptureFinished(tempFile, targetFile, openMarkup) {
         root.captureMode = "idle";
         root.pendingWindowCapture = false;
 
         let fileName = targetFile.split("/").pop();
-        let cmd = [
-            "bash", "-c",
-            "mkdir -p \"$(dirname \"$1\")\"; " +
-            "wl-copy --type image/png < \"$1\" 2>/dev/null || true; " +
-            "notify-send -a 'Screenshot' -i \"$1\" -h string:image-path:\"$1\" 'Screenshot Saved' 'Captured to clipboard & saved to ~/Pictures/Screenshots/'\"$2\" 2>/dev/null || true; " +
-            (openMarkup ? "satty -f \"$1\" --output-filename \"$1\" --early-exit --save-after-copy --copy-command 'wl-copy' --disable-notifications 2>/dev/null || true" : ""),
-            "_", targetFile, fileName
-        ];
+        let cmd = [];
+
+        if (openMarkup) {
+            cmd = [
+                "bash", "-c",
+                "( " +
+                "  mkdir -p \"$(dirname \"$2\")\"; " +
+                "  satty -f \"$1\" --output-filename \"$2\" --early-exit --save-after-copy --copy-command 'wl-copy' --actions-on-escape exit --disable-notifications 2>/dev/null || true; " +
+                "  if [ -s \"$2\" ]; then " +
+                "    wl-copy --type image/png < \"$2\" 2>/dev/null || true; " +
+                "    notify-send -a 'Screenshot' -i \"$2\" -h string:image-path:\"$2\" 'Screenshot Saved' 'Captured to clipboard & saved to ~/Pictures/Screenshots/'\"$3\" 2>/dev/null || true; " +
+                "  fi; " +
+                "  rm -f \"$1\"; " +
+                ") & disown",
+                "_", tempFile, targetFile, fileName
+            ];
+        } else {
+            cmd = [
+                "bash", "-c",
+                "mkdir -p \"$(dirname \"$2\")\"; " +
+                "mv -f \"$1\" \"$2\"; " +
+                "if [ -s \"$2\" ]; then " +
+                "  wl-copy --type image/png < \"$2\" 2>/dev/null || true; " +
+                "  notify-send -a 'Screenshot' -i \"$2\" -h string:image-path:\"$2\" 'Screenshot Saved' 'Captured to clipboard & saved to ~/Pictures/Screenshots/'\"$3\" 2>/dev/null || true; " +
+                "fi",
+                "_", tempFile, targetFile, fileName
+            ];
+        }
 
         postCaptureProc.command = cmd;
         postCaptureProc.running = false;
