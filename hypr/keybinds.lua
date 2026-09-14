@@ -20,13 +20,52 @@ hl.bind(mainMod .. " + M", hl.dsp.exit())
 hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ action = "toggle" }))
 hl.bind(mainMod .. " + L", hl.dsp.global("quickshell:lock"))
--- Screenshots (Quickshell independent instance with satty markup)
-hl.bind("Print", hl.dsp.global("quickshell:screenshot_direct"))
-hl.bind("SHIFT + Print", hl.dsp.global("quickshell:screenshot_toggle"))
-hl.bind(mainMod .. " + SHIFT + S", hl.dsp.global("quickshell:screenshot_toggle"))
-hl.bind(mainMod .. " + Print", hl.dsp.global("quickshell:screenshot_window"))
-hl.bind(mainMod .. " + SHIFT + Print", hl.dsp.global("quickshell:screenshot_region"))
+-- ==============================================================================
+-- Screenshots (Omarchy Capture Pipeline)
+-- ==============================================================================
+hl.bind("Print", hl.dsp.exec_cmd("omarchy-capture-screenshot"))
+hl.bind("SHIFT + Print", hl.dsp.exec_cmd("omarchy-capture-screenshot region"))
+hl.bind(mainMod .. " + SHIFT + S", hl.dsp.exec_cmd("omarchy-capture-screenshot region"))
+hl.bind(mainMod .. " + Print", hl.dsp.exec_cmd("omarchy-capture-screenshot windows"))
+hl.bind(mainMod .. " + SHIFT + Print", hl.dsp.exec_cmd("omarchy-capture-screenshot region"))
 hl.bind(mainMod .. " + V", hl.dsp.global("quickshell:clipboard_toggle"))
+
+-- Keyboard control for the slurp region picker (see omarchy-capture-region)
+local selection_layers = 0
+local selection_binds = {}
+
+hl.on("layer.opened", function(layer)
+  if layer.namespace == "selection" then
+    selection_layers = selection_layers + 1
+    if selection_layers == 1 then
+      selection_binds = {
+        hl.bind("RETURN", hl.dsp.exec_cmd("omarchy-capture-region --take-window"), { description = "Capture highlighted window" }),
+        hl.bind("CTRL + RETURN", hl.dsp.exec_cmd("omarchy-capture-region --take-fullscreen"), { description = "Capture entire screen" }),
+        hl.bind("TAB", hl.dsp.exec_cmd("omarchy-capture-region --select-window next"), { description = "Select next window to capture" }),
+        hl.bind("CTRL + TAB", hl.dsp.exec_cmd("omarchy-capture-region --select-window prev"), { description = "Select previous window to capture" }),
+      }
+      for _, direction in ipairs({ "left", "right", "up", "down" }) do
+        table.insert(
+          selection_binds,
+          hl.bind(direction:upper(), hl.dsp.exec_cmd("omarchy-capture-region --select-window " .. direction), { description = "Select window to capture" })
+        )
+      end
+    end
+  end
+end)
+
+hl.on("layer.closed", function(layer)
+  if layer.namespace == "selection" and selection_layers > 0 then
+    selection_layers = selection_layers - 1
+    if selection_layers == 0 then
+      for _, keybind in ipairs(selection_binds) do
+        keybind:unbind()
+      end
+      selection_binds = {}
+    end
+  end
+end)
+
 -- Focus 
 hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "l" }))
 hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "r" }))
