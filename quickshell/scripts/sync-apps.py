@@ -1033,6 +1033,28 @@ def main():
     palette = palettes[theme_id]
     print(f"Syncing application themes to '{palette['name']}' ({theme_id})...")
 
+    # 1. Safely and atomically persist active theme
+    active_file = CONFIG_DIR / "theme" / "active_theme.txt"
+    active_file.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = active_file.with_suffix(".tmp")
+    tmp_file.write_text(f"{theme_id}\n", encoding="utf-8")
+    tmp_file.replace(active_file)
+
+    # 2. Broadcast theme change to all running Quickshell instances in parallel
+    configs = ["bar", "lock", "launcher", "osd", "clipboard", "wallpaper", "themes", "screenshot"]
+    for cfg in configs:
+        subprocess.Popen(
+            ["quickshell", "ipc", "-p", str(CONFIG_DIR / f"{cfg}.qml"), "call", "theme", "setTheme", theme_id],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+    subprocess.Popen(
+        ["quickshell", "ipc", "-p", str(CONFIG_DIR / "wallpaper.qml"), "call", "wallpaper", "themeChanged", theme_id],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
+    )
+
+    # 3. Synchronize external desktop applications
     sync_gtk(palette)
     sync_icons(palette)
     sync_ghostty(palette)

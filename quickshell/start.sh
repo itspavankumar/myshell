@@ -58,7 +58,7 @@ set_theme() {
         echo "Usage: start.sh theme <theme-name>"
         return
     fi
-    "$CONFIG_DIR/scripts/set-theme.sh" "$theme_name"
+    python3 "$CONFIG_DIR/scripts/sync-apps.py" "$theme_name"
     echo "Theme successfully set to '$theme_name'. Shell and applications updated live."
 }
 

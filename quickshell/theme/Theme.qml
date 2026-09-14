@@ -81,8 +81,8 @@ Item {
             return;
         }
 
-        let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/set-theme.sh";
-        persistAndSyncProc.command = ["bash", scriptPath, themeId];
+        let syncScript = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/sync-apps.py";
+        persistAndSyncProc.command = ["python3", syncScript, themeId];
         persistAndSyncProc.running = true;
     }
 
