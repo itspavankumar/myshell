@@ -216,7 +216,6 @@ PanelWindow {
 
         if (!root.service) return;
         let targetFile = root.service.generateTargetPath();
-        let tempFile = "/tmp/qs_shot_raw_" + Date.now() + ".png";
 
         exportClip.grabToImage(function(result) {
             if (!result) {
@@ -226,14 +225,14 @@ PanelWindow {
             }
             let ok = false;
             try {
-                ok = result.saveToFile(tempFile);
+                ok = result.saveToFile(targetFile);
             } catch (e) {
                 console.error("ScreenshotOverlay: saveToFile exception:", e);
             }
             if (ok) {
-                if (root.service) root.service.onCaptureFinished(tempFile, targetFile, openMarkup);
+                if (root.service) root.service.onCaptureFinished(targetFile, openMarkup);
             } else {
-                console.error("ScreenshotOverlay: Failed to save to file:", tempFile);
+                console.error("ScreenshotOverlay: Failed to save to file:", targetFile);
                 if (root.service) root.service.cancelCapture();
             }
         });

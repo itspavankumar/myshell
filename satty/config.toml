@@ -12,7 +12,6 @@ save-after-copy = true
 default-hide-toolbars = false
 primary-highlighter = "block"
 disable-notifications = true
-actions-on-escape = "exit"
 
 [font]
 family = "SF Pro Display"
