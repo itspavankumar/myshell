@@ -37,7 +37,7 @@ PopupWindow {
     readonly property bool shouldBeOpen: Theme.activePopup === "battery"
     property bool popupVisible: false
     visible: popupVisible
-    implicitWidth: 300
+    implicitWidth: 330
     implicitHeight: mainCard.implicitHeight
 
     onShouldBeOpenChanged: {
@@ -46,6 +46,9 @@ PopupWindow {
             popupVisible = true;
             anchor.updateAnchor();
             openAnim.restart();
+            getCaffProc.running = true;
+            getProfileProc.running = true;
+            getLimitProc.running = true;
         } else {
             if (popupVisible) {
                 openAnim.stop();
@@ -64,6 +67,7 @@ PopupWindow {
     onVisibleChanged: {
         if (visible) {
             anchor.updateAnchor();
+            getCaffProc.running = true;
             getProfileProc.running = true;
             getLimitProc.running = true;
         } else {
@@ -143,33 +147,56 @@ PopupWindow {
 
     // ==========================================
     // CAFFEINATE (KEEP-AWAKE) STATE & CONTROLLER
+    // Pure QML Quickshell IPC to LockService
     // ==========================================
     property bool caffeinated: false
+    readonly property string lockConfigPath: (Quickshell.env("HOME") || "") + "/.config/quickshell/lock.qml"
 
-    FileView {
-        id: caffWatcher
-        path: (Quickshell.env("HOME") || "") + "/.config/quickshell/state/caffeinated.txt"
-        watchChanges: true
-        onFileChanged: {
-            let txt = caffWatcher.text().trim();
-            root.caffeinated = (txt === "1" || txt === "true");
-        }
-        onLoaded: {
-            let txt = caffWatcher.text().trim();
-            root.caffeinated = (txt === "1" || txt === "true");
+    Process {
+        id: getCaffProc
+        command: ["quickshell", "ipc", "-p", root.lockConfigPath, "call", "lock", "isCaffeinated"]
+        stdout: SplitParser {
+            onRead: (line) => {
+                let trimmed = line.trim();
+                if (trimmed === "true") {
+                    root.caffeinated = true;
+                } else if (trimmed === "false") {
+                    root.caffeinated = false;
+                }
+            }
         }
     }
 
     Process {
-        id: caffProc
+        id: setCaffProc
+        onExited: {
+            getCaffProc.running = false;
+            getCaffProc.running = true;
+        }
     }
 
     function toggleCaffeinate() {
-        root.caffeinated = !root.caffeinated;
-        let scriptPath = (Quickshell.env("HOME") || "") + "/.config/quickshell/scripts/caffeinate.sh";
-        caffProc.command = ["bash", scriptPath, root.caffeinated ? "on" : "off"];
-        caffProc.running = false;
-        caffProc.running = true;
+        let targetState = !root.caffeinated;
+        root.caffeinated = targetState;
+        setCaffProc.command = ["quickshell", "ipc", "-p", root.lockConfigPath, "call", "lock", "setCaffeinated", targetState ? "true" : "false"];
+        setCaffProc.running = false;
+        setCaffProc.running = true;
+    }
+
+    Timer {
+        id: caffPollTimer
+        interval: 3000
+        running: true
+        repeat: true
+        onTriggered: {
+            if (!getCaffProc.running && !setCaffProc.running) {
+                getCaffProc.running = true;
+            }
+        }
+    }
+
+    Component.onCompleted: {
+        getCaffProc.running = true;
     }
 
     // ==========================================
@@ -294,9 +321,11 @@ PopupWindow {
 
         ColumnLayout {
             id: contentCol
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 12
-            spacing: 12
+            spacing: 10
 
             // ==========================================
             // HEADER: Battery Title & Status Badge
@@ -359,17 +388,21 @@ PopupWindow {
             // ==========================================
             Rectangle {
                 Layout.fillWidth: true
-                implicitHeight: 84
+                implicitHeight: meterCol.implicitHeight + 20
                 color: Theme.bgSurface
                 border.color: Theme.borderNormal
                 border.width: Theme.borderWidth
                 radius: Theme.squareRadius
 
                 ColumnLayout {
-                    anchors.fill: parent
+                    id: meterCol
+                    anchors.top: parent.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
                     anchors.margins: 10
                     spacing: 8
 
+                    // Row 1: Percentage, Limit Badge, Power Rate
                     RowLayout {
                         Layout.fillWidth: true
                         spacing: 8
@@ -422,34 +455,30 @@ PopupWindow {
 
                         Text {
                             text: {
-                                if (root.isCharging && root.device && root.device.timeToFull > 0) {
-                                    return root.formatTime(root.device.timeToFull) + (root.changeRate > 0.05 ? (" (" + root.changeRate.toFixed(1) + " W)") : "");
+                                if (root.isCharging && root.changeRate > 0.05) {
+                                    return "+" + root.changeRate.toFixed(1) + " W";
                                 }
                                 if (root.isPluggedIn) {
-                                    if (root.isFull || root.batteryPercent >= (root.chargeLimit > 0 ? root.chargeLimit - 1 : 98)) {
-                                        return "0.0 W • AC Bypass";
-                                    }
-                                    return "0.0 W • On AC Power";
+                                    return "AC Power";
                                 }
-                                if (root.device && root.device.timeToEmpty > 0) {
-                                    return root.formatTime(root.device.timeToEmpty) + (root.changeRate > 0.05 ? (" (" + root.changeRate.toFixed(1) + " W)") : "");
+                                if (root.changeRate > 0.05) {
+                                    return "-" + root.changeRate.toFixed(1) + " W";
                                 }
-                                return root.changeRate > 0.05 ? (root.changeRate.toFixed(1) + " W") : "";
+                                return root.rateString;
                             }
                             renderType: Theme.renderType
-                            font.family: Theme.fontFamily
+                            font.family: Theme.fontMono
                             font.pixelSize: Theme.fontSubhead
-                            font.weight: Font.Medium
-                            font.letterSpacing: Theme.trackingTight
-                            color: Theme.textSecondary
+                            font.weight: Font.DemiBold
+                            color: root.isCharging ? Theme.cyan : (root.isPluggedIn ? Theme.green : Theme.textSecondary)
                         }
                     }
 
-                    // Progress Track with true squared corners & Charge Limit indicator
+                    // Row 2: Progress Track with true squared corners & Charge Limit indicator
                     Rectangle {
                         id: trackRect
                         Layout.fillWidth: true
-                        implicitHeight: 10
+                        implicitHeight: 8
                         color: Theme.bgBase
                         border.color: Theme.borderDim
                         border.width: Theme.borderWidth
@@ -475,21 +504,34 @@ PopupWindow {
                         }
                     }
 
-                    // Subhead: Threshold details & hardware bypass state
+                    // Row 3: Subhead: Threshold details & hardware bypass state
                     RowLayout {
                         Layout.fillWidth: true
+                        spacing: 6
 
                         Text {
-                            text: root.chargeLimit > 0 && root.chargeLimit < 100
-                                  ? ("Threshold set at " + root.chargeLimit + "% (hardware protected)")
-                                  : "Standard charging (no threshold set)"
+                            text: {
+                                if (root.isCharging && root.device && root.device.timeToFull > 0) {
+                                    return root.formatTime(root.device.timeToFull);
+                                }
+                                if (root.isPluggedIn) {
+                                    if (root.isFull || root.batteryPercent >= (root.chargeLimit > 0 ? root.chargeLimit - 1 : 98)) {
+                                        return "Threshold reached • Battery idle";
+                                    }
+                                    return "Charging to limit";
+                                }
+                                if (root.device && root.device.timeToEmpty > 0) {
+                                    return root.formatTime(root.device.timeToEmpty);
+                                }
+                                return "Discharging";
+                            }
                             renderType: Theme.renderType
                             font.family: Theme.fontFamily
-                            font.pixelSize: 10
+                            font.pixelSize: Theme.fontCaption
                             color: Theme.textMuted
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
                         }
-
-                        Item { Layout.fillWidth: true }
 
                         Text {
                             visible: root.isPluggedIn && (root.isFull || root.batteryPercent >= (root.chargeLimit > 0 ? root.chargeLimit - 1 : 98))
@@ -550,7 +592,7 @@ PopupWindow {
                         spacing: 1
 
                         Text {
-                            text: "CAFFEINATE"
+                            text: "KEEP AWAKE"
                             renderType: Theme.renderType
                             font.family: Theme.fontFamily
                             font.pixelSize: Theme.fontCaption
@@ -584,7 +626,7 @@ PopupWindow {
                         Rectangle {
                             width: 16
                             height: 16
-                            y: 2
+                            y: 3
                             x: root.caffeinated ? 21 : 3
                             color: root.caffeinated ? Theme.bgBase : Theme.textMuted
                             radius: Theme.squareRadius

@@ -40,18 +40,24 @@ Scope {
     property int idleLockTimeout: 300   // 5 minutes
     property int idleSleepTimeout: 600  // 10 minutes
 
-    FileView {
-        id: caffWatcher
-        path: (Quickshell.env("HOME") || "") + "/.config/quickshell/state/caffeinated.txt"
-        watchChanges: true
-        onFileChanged: {
-            let txt = caffWatcher.text().trim();
-            root.caffeinated = (txt === "1" || txt === "true");
+    Process {
+        id: systemdInhibitProc
+        command: ["systemd-inhibit", "--what=idle:sleep", "--why=Quickshell Caffeinate", "sleep", "infinity"]
+    }
+
+    function setCaffeinated(enabled) {
+        let b = (enabled === true || enabled === "true" || enabled === 1 || enabled === "1");
+        root.caffeinated = b;
+        if (b) {
+            systemdInhibitProc.running = false;
+            systemdInhibitProc.running = true;
+        } else {
+            systemdInhibitProc.running = false;
         }
-        onLoaded: {
-            let txt = caffWatcher.text().trim();
-            root.caffeinated = (txt === "1" || txt === "true");
-        }
+    }
+
+    function toggleCaffeinate() {
+        setCaffeinated(!root.caffeinated);
     }
 
     signal failed()
@@ -300,11 +306,11 @@ Scope {
         }
 
         function setCaffeinated(enabled: bool): void {
-            root.caffeinated = enabled;
+            root.setCaffeinated(enabled);
         }
 
         function toggleCaffeinate(): void {
-            root.caffeinated = !root.caffeinated;
+            root.toggleCaffeinate();
         }
 
         function isCaffeinated(): bool {
