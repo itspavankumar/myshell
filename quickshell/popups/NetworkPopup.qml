@@ -37,7 +37,7 @@ PopupWindow {
     readonly property bool shouldBeOpen: Theme.activePopup === "network"
     property bool popupVisible: false
     visible: popupVisible
-    implicitWidth: 220
+    implicitWidth: 250
     implicitHeight: mainCard.implicitHeight
 
     HyprlandFocusGrab {
@@ -367,7 +367,9 @@ PopupWindow {
 
         ColumnLayout {
             id: contentCol
-            anchors.fill: parent
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
             anchors.margins: 10
             spacing: 8
 
@@ -399,27 +401,43 @@ PopupWindow {
 
                 // Refresh Rescan Button
                 Rectangle {
-                    implicitWidth: 20
-                    implicitHeight: 18
-                    color: rescanMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface
-                    border.color: rescanMouse.containsMouse ? Theme.cyan : Theme.borderDim
+                    implicitWidth: 24
+                    implicitHeight: 24
+                    color: root.isScanning ? Qt.rgba(Theme.cyan.r, Theme.cyan.g, Theme.cyan.b, 0.15) : (rescanMouse.containsMouse ? Theme.bgSurfaceHover : Theme.bgSurface)
+                    border.color: (root.isScanning || rescanMouse.containsMouse) ? Theme.cyan : Theme.borderNormal
                     border.width: Theme.borderWidth
                     radius: Theme.squareRadius
 
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+
                     Text {
+                        id: refreshIcon
                         anchors.centerIn: parent
                         text: "󰑐"
                         renderType: Theme.renderType
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        color: root.isScanning ? Theme.cyan : (rescanMouse.containsMouse ? Theme.cyan : Theme.textSecondary)
+                        font.pixelSize: 13
+                        color: (root.isScanning || rescanMouse.containsMouse) ? Theme.cyan : Theme.textSecondary
+                        transformOrigin: Item.Center
 
-                        RotationAnimator on rotation {
+                        Behavior on color { ColorAnimation { duration: 150 } }
+
+                        RotationAnimation on rotation {
+                            running: root.isScanning
+                            loops: Animation.Infinite
                             from: 0
                             to: 360
-                            duration: 700
-                            loops: Animation.Infinite
-                            running: root.isScanning
+                            duration: 750
+                        }
+
+                        Connections {
+                            target: root
+                            function onIsScanningChanged() {
+                                if (!root.isScanning) {
+                                    refreshIcon.rotation = 0;
+                                }
+                            }
                         }
                     }
 
@@ -435,8 +453,8 @@ PopupWindow {
                 // Wi-Fi Sliding Switch Button
                 Rectangle {
                     id: wifiSwitch
-                    implicitWidth: 32
-                    implicitHeight: 18
+                    implicitWidth: 38
+                    implicitHeight: 24
                     color: root.isWifiEnabled ? Theme.cyan : Theme.bgBase
                     border.color: root.isWifiEnabled ? Theme.cyan : Theme.borderDim
                     border.width: Theme.borderWidth
@@ -448,10 +466,10 @@ PopupWindow {
                     // Sliding Thumb
                     Rectangle {
                         id: wifiThumb
-                        width: 12
-                        height: 12
+                        width: 16
+                        height: 16
                         anchors.verticalCenter: parent.verticalCenter
-                        x: root.isWifiEnabled ? (parent.width - width - 3) : 3
+                        x: root.isWifiEnabled ? (parent.width - width - 4) : 4
                         color: root.isWifiEnabled ? Theme.textDark : Theme.textMuted
                         radius: Theme.squareRadius
 
