@@ -7,7 +7,6 @@ hl.config({
         -- Fallback for older XWayland apps
         "XCURSOR_THEME,macOS-White",
         "XCURSOR_SIZE,16",
-        "PATH,$HOME/.local/bin:$HOME/Projects/myshell/bin:$PATH",
 	"QT_QPA_PLATFORMTHEME", "qt5ct",
 	"QT_QPA_PLATFORMTHEME", "qt6ct",
         -- Other variables

@@ -5,7 +5,7 @@
 # ==============================================================================
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/quickshell"
-CONFIGS=("bar" "lock" "launcher" "osd" "clipboard" "wallpaper" "themes")
+CONFIGS=("bar" "lock" "launcher" "osd" "clipboard" "wallpaper" "themes" "screenshot")
 
 start_all() {
     echo "Starting modular Quickshell instances..."
@@ -96,7 +96,7 @@ case "$1" in
         set_wallpaper "$2"
         ;;
     screenshot)
-        omarchy-capture-screenshot "${2:-smart}"
+        quickshell ipc -p "$CONFIG_DIR/screenshot.qml" call screenshot capture "${2:-region}" 2>/dev/null || true
         ;;
     status)
         status

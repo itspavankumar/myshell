@@ -31,10 +31,3 @@ hl.layer_rule({
     no_anim = true
 })
 
--- Remove animations on the slurp region selection used by screenshots
-hl.layer_rule({
-    match = { namespace = "selection" },
-    no_anim = true,
-    animation = "none"
-})
-

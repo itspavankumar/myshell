@@ -81,18 +81,14 @@ PanelWindow {
                     }
                 }
 
-                // Click card to invoke action or focus app
+                // Click card to focus app
                 MouseArea {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         if (root.service) {
-                            if (modelData.notif && modelData.notif.actions && modelData.notif.actions.length > 0) {
-                                root.service.invokeAction(toastCard.modelData, modelData.notif.actions[0]);
-                            } else {
-                                root.service.focusApp(modelData);
-                            }
+                            root.service.focusApp(modelData);
                             root.service.dismissToast(modelData.id);
                         }
                     }
